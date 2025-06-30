@@ -11,6 +11,7 @@ import BookmarkManager from '@/components/browser/BookmarkManager';
 import BrowserWebView from '@/components/browser/BrowserWebView';
 import DownloadManager from '@/components/browser/DownloadManager';
 import HistoryManager from '@/components/browser/HistoryManager';
+import ResourceSniffer from '@/components/browser/ResourceSniffer';
 import TabBar from '@/components/browser/TabBar';
 import TabManager from '@/components/browser/TabManager';
 import UserScriptManager from '@/components/browser/UserScriptManager';
@@ -21,6 +22,7 @@ import { databaseService } from '@/services/DatabaseService';
 import { downloadService } from '@/services/DownloadService';
 import { mcpService } from '@/services/MCPService';
 import { performanceService } from '@/services/PerformanceService';
+import { resourceSnifferService } from '@/services/ResourceSnifferService';
 import { userScriptService } from '@/services/UserScriptService';
 
 // Hooks
@@ -66,6 +68,14 @@ interface DownloadItem {
   createdAt: string;
 }
 
+interface ResourceItem {
+  id: string;
+  url: string;
+  type: string;
+  size: number;
+  createdAt: string;
+}
+
 export default function BrowserScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -96,7 +106,9 @@ export default function BrowserScreen() {
   const [showDownloads, setShowDownloads] = useState(false);
   const [showUserScripts, setShowUserScripts] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showResourceSniffer, setShowResourceSniffer] = useState(false);
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
+  const [pageResources, setPageResources] = useState<ResourceItem[]>([]);
 
   // Get current active tab
   const currentTab = tabs.find(tab => tab.id === activeTabId);
@@ -821,18 +833,19 @@ export default function BrowserScreen() {
           content: message.selectedText,
           url: message.pageUrl
         });
-        // Optional: Auto-open AI chat for text selection
-        // setShowAIChat(true);
         break;
         
       case 'page_content_extracted':
-        // Store page content for AI context
         console.log('Page content extracted:', message.content);
+        break;
+
+      case 'resources_extracted':
+        // 处理从WebView接收到的资源数据
+        handleResourcesExtracted(message.resources);
         break;
 
       case 'user_script_executed':
         console.log(`User script executed: ${message.scriptName}`);
-        // Optionally update UI to show script activity
         break;
 
       case 'user_script_error':
@@ -849,7 +862,6 @@ export default function BrowserScreen() {
         break;
 
       case 'memory_usage':
-        // Handle memory usage reporting
         console.log('Memory usage:', message);
         break;
 
@@ -859,6 +871,45 @@ export default function BrowserScreen() {
         
       default:
         console.log('Unknown message type:', message.type);
+    }
+  };
+
+  // 处理从WebView提取的资源
+  const handleResourcesExtracted = (rawResources: any[]) => {
+    try {
+      const processedResources = resourceSnifferService.processExtractedResources(rawResources);
+      setPageResources(processedResources);
+      console.log(`Extracted ${processedResources.length} resources from page`);
+    } catch (error) {
+      console.error('Failed to process extracted resources:', error);
+    }
+  };
+
+  // 触发资源提取
+  const handleExtractResources = async (): Promise<ResourceItem[]> => {
+    return new Promise((resolve, reject) => {
+      // 请求WebView提取资源
+      // 这里需要一个方法来向WebView发送消息
+      // 暂时返回当前已提取的资源
+      resolve(pageResources);
+    });
+  };
+
+  // 下载资源
+  const handleDownloadResource = async (resource: ResourceItem) => {
+    try {
+      if (!resourceSnifferService.isDownloadableResource(resource.url)) {
+        Alert.alert('不支持的资源', '该资源类型不支持下载');
+        return;
+      }
+
+      const filename = resourceSnifferService.getSuggestedFilename(resource);
+      await handleDownloadRequest(resource.url, filename);
+      
+      Alert.alert('开始下载', `正在下载: ${resource.name}`);
+    } catch (error) {
+      console.error('Failed to download resource:', error);
+      Alert.alert('下载失败', '资源下载失败，请重试');
     }
   };
 
@@ -902,6 +953,14 @@ export default function BrowserScreen() {
       >
         <Text style={styles.quickActionIcon}>✨</Text>
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>AI Chat</Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity 
+        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        onPress={() => setShowResourceSniffer(true)}
+      >
+        <Text style={styles.quickActionIcon}>🕵️</Text>
+        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Resources</Text>
       </TouchableOpacity>
     </View>
   );
@@ -968,6 +1027,7 @@ export default function BrowserScreen() {
         onUserScriptsPress={() => setShowUserScripts(true)}
         onQuickAIChat={handleQuickAIChat}
         aiConfigured={aiConfigured}
+        onShowResourceSniffer={() => setShowResourceSniffer(true)}
       />
 
       {/* Performance Indicator */}
@@ -1075,6 +1135,16 @@ export default function BrowserScreen() {
       <UserScriptManager
         visible={showUserScripts}
         onClose={() => setShowUserScripts(false)}
+      />
+
+      {/* Resource Sniffer Modal */}
+      <ResourceSniffer
+        isVisible={showResourceSniffer}
+        onClose={() => setShowResourceSniffer(false)}
+        currentPageUrl={currentTab.url}
+        currentPageTitle={currentTab.title}
+        onExtractResources={handleExtractResources}
+        onDownloadResource={handleDownloadResource}
       />
     </SafeAreaView>
   );

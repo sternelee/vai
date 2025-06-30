@@ -45,6 +45,7 @@ interface AddressBarProps {
   onUserScriptsPress: () => void;
   onQuickAIChat?: () => void;
   aiConfigured?: boolean;
+  onShowResourceSniffer?: () => void;
 }
 
 export default function AddressBar({
@@ -73,6 +74,7 @@ export default function AddressBar({
   onUserScriptsPress,
   onQuickAIChat,
   aiConfigured = false,
+  onShowResourceSniffer,
 }: AddressBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -417,6 +419,16 @@ export default function AddressBar({
           >
             <Text style={styles.actionButtonText}>🐒</Text>
           </TouchableOpacity>
+
+          {/* Resource Sniffer Button */}
+          {onShowResourceSniffer && (
+            <TouchableOpacity
+              style={[styles.actionButton, isDark && styles.actionButtonDark]}
+              onPress={onShowResourceSniffer}
+            >
+              <Text style={styles.actionButtonText}>🕵️</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 

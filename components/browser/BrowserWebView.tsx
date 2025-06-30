@@ -3,6 +3,7 @@ import { WebView } from "@metamask/react-native-webview";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
 import { performanceService } from "../../services/PerformanceService";
+import { resourceSnifferService } from "../../services/ResourceSnifferService";
 import { userScriptService } from "../../services/UserScriptService";
 
 interface BrowserWebViewProps {
@@ -125,6 +126,9 @@ export default function BrowserWebView({
 
     // Inject AI script
     injectAIScript();
+
+    // Inject resource sniffer script
+    injectResourceSnifferScript();
   };
 
   const handleError = (error: any) => {
@@ -353,6 +357,25 @@ export default function BrowserWebView({
     webViewRef.current?.injectJavaScript(script);
   };
 
+  const injectResourceSnifferScript = () => {
+    const script = resourceSnifferService.generateResourceSnifferScript();
+    webViewRef.current?.injectJavaScript(script);
+  };
+
+  // Public method to trigger resource extraction
+  const extractResources = () => {
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'extract_resources'
+      }));
+    }
+  };
+
+  // Expose the extractResources method to parent component
+  React.useImperativeHandle(React.forwardRef(() => null), () => ({
+    extractResources,
+  }), []);
+
   const userAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1 VaiBrowser/1.0`;
 
   return (
@@ -443,4 +466,3 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
 });
-
