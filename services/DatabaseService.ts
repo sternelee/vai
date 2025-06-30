@@ -275,23 +275,33 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await database
-        .insert(bookmarks)
-        .values({
+      // Check if bookmark already exists
+      const existing = await database
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(eq(bookmarks.url, item.url))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing bookmark
+        await database
+          .update(bookmarks)
+          .set({
+            title: item.title,
+            favicon: item.favicon || null,
+            folder: item.folder || "default",
+          })
+          .where(eq(bookmarks.url, item.url));
+      } else {
+        // Insert new bookmark
+        await database.insert(bookmarks).values({
           url: item.url,
           title: item.title,
           createdAt: item.createdAt,
           favicon: item.favicon || null,
           folder: item.folder || "default",
-        })
-        .onConflict((table) => ({
-          target: table.url,
-          set: {
-            title: item.title,
-            favicon: item.favicon || null,
-            folder: item.folder || "default",
-          },
-        }));
+        });
+      }
     } catch (error) {
       console.error("Failed to add bookmark:", error);
       throw error;
@@ -302,13 +312,20 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      let query = database.select().from(bookmarks);
+      let result;
 
       if (folder && folder !== "default") {
-        query = query.where(eq(bookmarks.folder, folder));
+        result = await database
+          .select()
+          .from(bookmarks)
+          .where(eq(bookmarks.folder, folder))
+          .orderBy(desc(bookmarks.createdAt));
+      } else {
+        result = await database
+          .select()
+          .from(bookmarks)
+          .orderBy(desc(bookmarks.createdAt));
       }
-
-      const result = await query.orderBy(desc(bookmarks.createdAt));
 
       return result.map((row) => ({
         id: row.id,
@@ -454,9 +471,31 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await database
-        .insert(downloads)
-        .values({
+      // Check if download already exists
+      const existing = await database
+        .select({ id: downloads.id })
+        .from(downloads)
+        .where(eq(downloads.id, download.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing download
+        await database
+          .update(downloads)
+          .set({
+            fileSize: download.fileSize || 0,
+            downloadedSize: download.downloadedSize || 0,
+            status: download.status,
+            endTime: download.endTime || null,
+            localPath: download.localPath || null,
+            error: download.error || null,
+            progress: download.progress || 0,
+            speed: download.speed || 0,
+          })
+          .where(eq(downloads.id, download.id));
+      } else {
+        // Insert new download
+        await database.insert(downloads).values({
           id: download.id,
           url: download.url,
           filename: download.filename,
@@ -470,20 +509,8 @@ class DatabaseService {
           error: download.error || null,
           progress: download.progress || 0,
           speed: download.speed || 0,
-        })
-        .onConflict((table) => ({
-          target: table.id,
-          set: {
-            fileSize: download.fileSize || 0,
-            downloadedSize: download.downloadedSize || 0,
-            status: download.status,
-            endTime: download.endTime || null,
-            localPath: download.localPath || null,
-            error: download.error || null,
-            progress: download.progress || 0,
-            speed: download.speed || 0,
-          },
-        }));
+        });
+      }
     } catch (error) {
       console.error("Failed to save download:", error);
       throw error;
@@ -625,9 +652,41 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await database
-        .insert(userScripts)
-        .values({
+      // Check if script already exists
+      const existing = await database
+        .select({ id: userScripts.id })
+        .from(userScripts)
+        .where(eq(userScripts.id, script.id))
+        .limit(1);
+
+      if (existing.length > 0) {
+        // Update existing script
+        await database
+          .update(userScripts)
+          .set({
+            name: script.name,
+            description: script.description || null,
+            author: script.author || null,
+            version: script.version || null,
+            enabled: script.enabled !== false,
+            code: script.code,
+            includes: script.includes,
+            excludes: script.excludes || "[]",
+            grants: script.grants || '["none"]',
+            runAt: script.runAt || "document-ready",
+            updateUrl: script.updateUrl || null,
+            downloadUrl: script.downloadUrl || null,
+            homepageUrl: script.homepageUrl || null,
+            supportUrl: script.supportUrl || null,
+            lastUpdate: script.lastUpdate || null,
+            runCount: script.runCount || 0,
+            isBuiltIn: script.isBuiltIn || false,
+            icon: script.icon || null,
+          })
+          .where(eq(userScripts.id, script.id));
+      } else {
+        // Insert new script
+        await database.insert(userScripts).values({
           id: script.id,
           name: script.name,
           description: script.description || null,
@@ -648,30 +707,8 @@ class DatabaseService {
           runCount: script.runCount || 0,
           isBuiltIn: script.isBuiltIn || false,
           icon: script.icon || null,
-        })
-        .onConflict((table) => ({
-          target: table.id,
-          set: {
-            name: script.name,
-            description: script.description || null,
-            author: script.author || null,
-            version: script.version || null,
-            enabled: script.enabled !== false,
-            code: script.code,
-            includes: script.includes,
-            excludes: script.excludes || "[]",
-            grants: script.grants || '["none"]',
-            runAt: script.runAt || "document-ready",
-            updateUrl: script.updateUrl || null,
-            downloadUrl: script.downloadUrl || null,
-            homepageUrl: script.homepageUrl || null,
-            supportUrl: script.supportUrl || null,
-            lastUpdate: script.lastUpdate || null,
-            runCount: script.runCount || 0,
-            isBuiltIn: script.isBuiltIn || false,
-            icon: script.icon || null,
-          },
-        }));
+        });
+      }
     } catch (error) {
       console.error("Failed to save user script:", error);
       throw error;
@@ -692,8 +729,8 @@ class DatabaseService {
         enabled: Boolean(row.enabled),
         isBuiltIn: Boolean(row.isBuiltIn),
         includes: JSON.parse(row.includes),
-        excludes: JSON.parse(row.excludes),
-        grants: JSON.parse(row.grants),
+        excludes: JSON.parse(row.excludes || "[]"),
+        grants: JSON.parse(row.grants || '["none"]'),
       }));
     } catch (error) {
       console.error("Failed to get user scripts:", error);
@@ -719,8 +756,8 @@ class DatabaseService {
         enabled: Boolean(row.enabled),
         isBuiltIn: Boolean(row.isBuiltIn),
         includes: JSON.parse(row.includes),
-        excludes: JSON.parse(row.excludes),
-        grants: JSON.parse(row.grants),
+        excludes: JSON.parse(row.excludes || "[]"),
+        grants: JSON.parse(row.grants || '["none"]'),
       };
     } catch (error) {
       console.error("Failed to get user script:", error);

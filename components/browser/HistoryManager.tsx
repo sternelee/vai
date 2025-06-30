@@ -1,17 +1,17 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { databaseService, HistoryItem } from '@/services/DatabaseService';
+import databaseService, { HistoryItem } from '@/services/DatabaseService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Modal from 'react-native-modal';
 

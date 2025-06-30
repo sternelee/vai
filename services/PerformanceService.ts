@@ -27,8 +27,8 @@ class PerformanceService {
   private imageCache = new Map<string, CacheEntry<string>>();
   private webViewRefs = new Map<string, any>();
   private isMonitoring = false;
-  private monitoringInterval: NodeJS.Timeout | null = null;
-  
+  private monitoringInterval: number | null = null;
+
   // Cache configuration
   private readonly MAX_CACHE_SIZE = 100;
   private readonly CACHE_TTL = 30 * 60 * 1000; // 30 minutes
@@ -53,7 +53,7 @@ class PerformanceService {
   // Start performance monitoring
   startMonitoring(): void {
     if (this.isMonitoring) return;
-    
+
     this.isMonitoring = true;
     this.monitoringInterval = setInterval(async () => {
       await this.collectMetrics();
@@ -63,7 +63,7 @@ class PerformanceService {
   // Stop performance monitoring
   stopMonitoring(): void {
     if (!this.isMonitoring) return;
-    
+
     this.isMonitoring = false;
     if (this.monitoringInterval) {
       clearInterval(this.monitoringInterval);
@@ -75,7 +75,7 @@ class PerformanceService {
   private async collectMetrics(): Promise<void> {
     try {
       const memoryInfo = await this.getMemoryInfo();
-      
+
       const metrics: PerformanceMetrics = {
         memoryUsage: memoryInfo,
         loadTime: 0, // Will be set by WebView
@@ -85,7 +85,7 @@ class PerformanceService {
       };
 
       this.performanceMetrics.push(metrics);
-      
+
       // Keep only last 100 metrics
       if (this.performanceMetrics.length > 100) {
         this.performanceMetrics = this.performanceMetrics.slice(-100);
@@ -111,7 +111,7 @@ class PerformanceService {
         totalJSHeapSize: 200 * 1024 * 1024, // 200MB
         jsHeapSizeLimit: 512 * 1024 * 1024, // 512MB
       };
-      
+
       return estimatedMemory;
     } catch (error) {
       console.error('Failed to get memory info:', error);
@@ -167,7 +167,7 @@ class PerformanceService {
     // Update access info
     entry.accessCount++;
     entry.lastAccessed = Date.now();
-    
+
     return entry.data;
   }
 
@@ -197,7 +197,7 @@ class PerformanceService {
 
     entry.accessCount++;
     entry.lastAccessed = Date.now();
-    
+
     return entry.data;
   }
 
@@ -205,7 +205,7 @@ class PerformanceService {
   private evictOldestCacheEntries(): void {
     const entries = Array.from(this.memoryCache.entries());
     entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-    
+
     // Remove oldest 20% of entries
     const toRemove = Math.ceil(entries.length * 0.2);
     for (let i = 0; i < toRemove; i++) {
@@ -216,7 +216,7 @@ class PerformanceService {
   private evictOldestImageCacheEntries(): void {
     const entries = Array.from(this.imageCache.entries());
     entries.sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
-    
+
     // Remove oldest 20% of entries
     const toRemove = Math.ceil(entries.length * 0.2);
     for (let i = 0; i < toRemove; i++) {
@@ -227,19 +227,19 @@ class PerformanceService {
   // Perform aggressive memory cleanup
   private async performMemoryCleanup(): Promise<void> {
     console.log('Performing memory cleanup...');
-    
+
     try {
       // Clear expired cache entries
       await this.cleanupCache();
-      
+
       // Clear inactive WebViews
       this.cleanupInactiveWebViews();
-      
+
       // Force garbage collection if available
       if (global.gc) {
         global.gc();
       }
-      
+
       console.log('Memory cleanup completed');
     } catch (error) {
       console.error('Memory cleanup failed:', error);
@@ -249,14 +249,14 @@ class PerformanceService {
   // Cleanup expired cache entries
   async cleanupCache(): Promise<void> {
     const now = Date.now();
-    
+
     // Cleanup memory cache
     for (const [key, entry] of this.memoryCache.entries()) {
       if (now - entry.timestamp > this.CACHE_TTL) {
         this.memoryCache.delete(key);
       }
     }
-    
+
     // Cleanup image cache
     for (const [key, entry] of this.imageCache.entries()) {
       if (now - entry.timestamp > this.CACHE_TTL) {
@@ -306,7 +306,7 @@ class PerformanceService {
 
   measureRenderTime(componentName: string, renderTime: number): void {
     console.log(`${componentName} render time: ${renderTime}ms`);
-    
+
     // Store render time in latest metrics
     if (this.performanceMetrics.length > 0) {
       this.performanceMetrics[this.performanceMetrics.length - 1].renderTime = renderTime;
@@ -342,14 +342,14 @@ class PerformanceService {
     // Calculate cache hit rate
     const totalCacheAccesses = Array.from(this.memoryCache.values())
       .reduce((sum, entry) => sum + entry.accessCount, 0);
-    const cacheHitRate = this.memoryCache.size > 0 ? 
+    const cacheHitRate = this.memoryCache.size > 0 ?
       (totalCacheAccesses - this.memoryCache.size) / totalCacheAccesses : 0;
 
     return {
-      averageMemoryUsage: memoryUsages.length > 0 ? 
+      averageMemoryUsage: memoryUsages.length > 0 ?
         memoryUsages.reduce((a, b) => a + b, 0) / memoryUsages.length : 0,
       peakMemoryUsage: memoryUsages.length > 0 ? Math.max(...memoryUsages) : 0,
-      averageLoadTime: loadTimes.length > 0 ? 
+      averageLoadTime: loadTimes.length > 0 ?
         loadTimes.reduce((a, b) => a + b, 0) / loadTimes.length : 0,
       cacheHitRate: cacheHitRate * 100,
       totalTabs: this.webViewRefs.size,
@@ -360,7 +360,7 @@ class PerformanceService {
   clearAllCaches(): void {
     this.memoryCache.clear();
     this.imageCache.clear();
-    
+
     // Clear WebView caches
     for (const webViewRef of this.webViewRefs.values()) {
       try {
@@ -381,4 +381,4 @@ class PerformanceService {
 }
 
 // Export singleton instance
-export const performanceService = new PerformanceService(); 
+export const performanceService = new PerformanceService();

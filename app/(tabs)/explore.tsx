@@ -2,7 +2,7 @@ import AIProviderConfig from '@/components/browser/AIProviderConfig';
 import MCPManager from '@/components/browser/MCPManager';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { aiService } from '@/services/AIService';
-import { databaseService } from '@/services/DatabaseService';
+import databaseService from '@/services/DatabaseService';
 import { mcpService } from '@/services/MCPService';
 import { performanceService } from '@/services/PerformanceService';
 import { userScriptService } from '@/services/UserScriptService';

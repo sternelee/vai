@@ -1,7 +1,7 @@
 import { DownloadItem } from '@/components/browser/DownloadManager';
 import * as FileSystem from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
-import { databaseService } from './DatabaseService';
+import databaseService from './DatabaseService';
 
 export interface DownloadOptions {
   url: string;
@@ -19,7 +19,7 @@ class DownloadService {
   private downloads: Map<string, DownloadItem> = new Map();
   private activeDownloads: Map<string, FileSystem.DownloadResumable> = new Map();
   private listeners: Set<(downloads: DownloadItem[]) => void> = new Set();
-  
+
   constructor() {
     this.loadDownloadsFromDB();
   }
@@ -50,11 +50,11 @@ class DownloadService {
     try {
       const savedDownloads = await databaseService.getDownloads();
       this.downloads.clear();
-      
+
       savedDownloads.forEach(download => {
         this.downloads.set(download.id, download);
       });
-      
+
       this.notifyListeners();
     } catch (error) {
       console.error('Failed to load downloads from database:', error);
@@ -89,12 +89,12 @@ class DownloadService {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
       const filename = pathname.split('/').pop() || 'download';
-      
+
       // Add extension if missing
       if (!filename.includes('.')) {
         return `${filename}.bin`;
       }
-      
+
       return filename;
     } catch {
       return `download_${Date.now()}.bin`;
@@ -110,7 +110,7 @@ class DownloadService {
   private async ensureDownloadDirectory(): Promise<void> {
     const downloadDir = this.getDownloadDirectory();
     const dirInfo = await FileSystem.getInfoAsync(downloadDir);
-    
+
     if (!dirInfo.exists) {
       await FileSystem.makeDirectoryAsync(downloadDir, { intermediates: true });
     }
@@ -120,11 +120,11 @@ class DownloadService {
   async startDownload(options: DownloadOptions): Promise<string> {
     try {
       await this.ensureDownloadDirectory();
-      
+
       const id = Date.now().toString();
       const filename = this.generateFilename(options.url, options.filename);
       const localPath = `${this.getDownloadDirectory()}${filename}`;
-      
+
       // Create download item
       const downloadItem: DownloadItem = {
         id,
@@ -160,7 +160,7 @@ class DownloadService {
 
       try {
         const result = await downloadResumable.downloadAsync();
-        
+
         if (result) {
           await this.handleDownloadComplete(id, result.uri);
         }
@@ -180,8 +180,8 @@ class DownloadService {
     const download = this.downloads.get(id);
     if (!download) return;
 
-    const progressRatio = progress.totalBytesExpectedToWrite > 0 
-      ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite 
+    const progressRatio = progress.totalBytesExpectedToWrite > 0
+      ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite
       : 0;
 
     const speed = this.calculateDownloadSpeed(id, progress.totalBytesWritten);
@@ -215,13 +215,13 @@ class DownloadService {
     try {
       // Get file info
       const fileInfo = await FileSystem.getInfoAsync(uri);
-      
+
       this.updateDownloadStatus(id, {
         status: 'completed',
         endTime: new Date().toISOString(),
         localPath: uri,
-        fileSize: fileInfo.size || download.fileSize,
-        downloadedSize: fileInfo.size || download.downloadedSize,
+        fileSize: download.fileSize,
+        downloadedSize: download.downloadedSize,
         progress: 1,
         speed: 0,
       });
@@ -245,7 +245,7 @@ class DownloadService {
   // Handle download error
   private async handleDownloadError(id: string, error: Error): Promise<void> {
     console.error(`Download ${id} failed:`, error);
-    
+
     this.updateDownloadStatus(id, {
       status: 'error',
       error: error.message,
@@ -262,10 +262,10 @@ class DownloadService {
 
     const updatedDownload = { ...download, ...updates };
     this.downloads.set(id, updatedDownload);
-    
+
     // Save to database async
     this.saveDownloadToDB(updatedDownload).catch(console.error);
-    
+
     this.notifyListeners();
   }
 
@@ -350,7 +350,7 @@ class DownloadService {
   // Clear completed downloads
   async clearCompleted(): Promise<void> {
     const completedIds: string[] = [];
-    
+
     for (const [id, download] of this.downloads) {
       if (download.status === 'completed') {
         completedIds.push(id);
@@ -383,7 +383,7 @@ class DownloadService {
 
   // Get all downloads
   getDownloads(): DownloadItem[] {
-    return Array.from(this.downloads.values()).sort((a, b) => 
+    return Array.from(this.downloads.values()).sort((a, b) =>
       new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
     );
   }
@@ -422,7 +422,7 @@ class DownloadService {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
-      
+
       // Common downloadable extensions
       const downloadableExtensions = [
         '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
@@ -445,7 +445,7 @@ class DownloadService {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
       const extension = pathname.split('.').pop();
-      
+
       switch (extension) {
         case 'pdf': return 'document';
         case 'doc': case 'docx': case 'txt': return 'document';
@@ -465,4 +465,4 @@ class DownloadService {
 }
 
 // Export singleton instance
-export const downloadService = new DownloadService(); 
+export const downloadService = new DownloadService();
