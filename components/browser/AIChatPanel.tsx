@@ -1,6 +1,6 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import {
     ActivityIndicator,
     Alert,
@@ -12,12 +12,12 @@ import {
     TextInput,
     TouchableOpacity,
     View,
-} from 'react-native';
-import Modal from 'react-native-modal';
+} from "react-native";
+import Modal from "react-native-modal";
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
   isStreaming?: boolean;
@@ -30,7 +30,10 @@ interface AIChatPanelProps {
   currentPageUrl: string;
   currentPageContent: string;
   selectedText?: string;
-  onSendMessage: (message: string, context: string) => Promise<ReadableStream<string>>;
+  onSendMessage: (
+    message: string,
+    context: string,
+  ) => Promise<ReadableStream<string>>;
   messages: ChatMessage[];
   onClearHistory: () => void;
   aiConfigured: boolean;
@@ -50,14 +53,16 @@ export default function AIChatPanel({
   aiConfigured,
   onConfigureAI,
 }: AIChatPanelProps) {
-  const [inputText, setInputText] = useState('');
+  const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  );
   const colorScheme = useColorScheme();
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -72,26 +77,29 @@ export default function AIChatPanel({
   useEffect(() => {
     if (selectedText && isVisible) {
       setInputText(`Can you explain this text: "${selectedText}"`);
+    } else if (isVisible && !selectedText && currentPageContent) {
+      // 如果没有选中文本但有页面内容，则预填充页面分析提示
+      setInputText(`Please analyze this page: ${currentPageTitle || currentPageUrl}`);
     }
-  }, [selectedText, isVisible]);
+  }, [selectedText, isVisible, currentPageContent, currentPageTitle, currentPageUrl]);
 
   const handleSendMessage = async () => {
     if (!inputText.trim() || isLoading) return;
 
     if (!aiConfigured) {
       Alert.alert(
-        'AI Not Configured',
-        'Please configure your AI API key in settings to use this feature.',
+        "AI Not Configured",
+        "Please configure your AI API key in settings to use this feature.",
         [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Configure', onPress: onConfigureAI },
-        ]
+          { text: "Cancel", style: "cancel" },
+          { text: "Configure", onPress: onConfigureAI },
+        ],
       );
       return;
     }
 
     const messageText = inputText.trim();
-    setInputText('');
+    setInputText("");
     setIsLoading(true);
 
     try {
@@ -109,7 +117,7 @@ export default function AIChatPanel({
 
       // Read the stream
       const reader = responseStream.getReader();
-      let accumulatedResponse = '';
+      let accumulatedResponse = "";
 
       try {
         while (true) {
@@ -117,7 +125,7 @@ export default function AIChatPanel({
           if (done) break;
 
           accumulatedResponse += value;
-          
+
           // Update the streaming message
           // This would need to be handled by the parent component
           // to update the messages array with the streaming content
@@ -126,10 +134,9 @@ export default function AIChatPanel({
         reader.releaseLock();
         setStreamingMessageId(null);
       }
-
     } catch (error) {
-      console.error('Failed to send message:', error);
-      Alert.alert('Error', 'Failed to send message. Please try again.');
+      console.error("Failed to send message:", error);
+      Alert.alert("Error", "Failed to send message. Please try again.");
     } finally {
       setIsLoading(false);
     }
@@ -137,32 +144,33 @@ export default function AIChatPanel({
 
   const quickActions = [
     {
-      id: 'summarize',
-      icon: 'document-text-outline',
-      title: 'Summarize',
-      message: 'Can you summarize the main points of this page?',
+      id: "summarize",
+      icon: "document-text-outline",
+      title: "Summarize",
+      message: "Can you summarize the main points of this page?",
     },
     {
-      id: 'explain',
-      icon: 'help-circle-outline',
-      title: 'Explain',
-      message: 'Can you explain what this page is about in simple terms?',
+      id: "explain",
+      icon: "help-circle-outline",
+      title: "Explain",
+      message: "Can you explain what this page is about in simple terms?",
     },
     {
-      id: 'translate',
-      icon: 'language-outline',
-      title: 'Translate',
-      message: 'Can you translate the key content of this page to English?',
+      id: "translate",
+      icon: "language-outline",
+      title: "Translate",
+      message: "Can you translate the key content of this page to English?",
     },
     {
-      id: 'questions',
-      icon: 'chatbubble-ellipses-outline',
-      title: 'Questions',
-      message: 'What are some interesting questions I could ask about this content?',
+      id: "questions",
+      icon: "chatbubble-ellipses-outline",
+      title: "Questions",
+      message:
+        "What are some interesting questions I could ask about this content?",
     },
   ];
 
-  const handleQuickAction = (action: typeof quickActions[0]) => {
+  const handleQuickAction = (action: (typeof quickActions)[0]) => {
     setInputText(action.message);
     setTimeout(() => {
       inputRef.current?.focus();
@@ -171,30 +179,38 @@ export default function AIChatPanel({
 
   const formatTimestamp = (timestamp: number) => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
   const renderMessage = ({ item }: { item: ChatMessage }) => (
-    <View style={[
-      styles.messageContainer,
-      item.role === 'user' ? styles.userMessage : styles.assistantMessage,
-    ]}>
-      <View style={[
-        styles.messageBubble,
-        {
-          backgroundColor: item.role === 'user' 
-            ? '#007AFF' 
-            : (isDark ? '#2C2C2E' : '#F2F2F7'),
-        },
-      ]}>
-        <Text style={[
-          styles.messageText,
+    <View
+      style={[
+        styles.messageContainer,
+        item.role === "user" ? styles.userMessage : styles.assistantMessage,
+      ]}
+    >
+      <View
+        style={[
+          styles.messageBubble,
           {
-            color: item.role === 'user' 
-              ? '#FFFFFF' 
-              : (isDark ? '#FFFFFF' : '#000000'),
+            backgroundColor:
+              item.role === "user" ? "#007AFF" : isDark ? "#2C2C2E" : "#F2F2F7",
           },
-        ]}>
+        ]}
+      >
+        <Text
+          style={[
+            styles.messageText,
+            {
+              color:
+                item.role === "user"
+                  ? "#FFFFFF"
+                  : isDark
+                    ? "#FFFFFF"
+                    : "#000000",
+            },
+          ]}
+        >
           {item.content}
         </Text>
         {item.isStreaming && (
@@ -203,7 +219,9 @@ export default function AIChatPanel({
           </View>
         )}
       </View>
-      <Text style={[styles.timestamp, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
+      <Text
+        style={[styles.timestamp, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
+      >
         {formatTimestamp(item.timestamp)}
       </Text>
     </View>
@@ -211,22 +229,35 @@ export default function AIChatPanel({
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
-      <Text style={[styles.quickActionsTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+      <Text
+        style={[
+          styles.quickActionsTitle,
+          { color: isDark ? "#FFFFFF" : "#000000" },
+        ]}
+      >
         Quick Actions
       </Text>
       <View style={styles.quickActionsGrid}>
         {quickActions.map((action) => (
           <TouchableOpacity
             key={action.id}
-            style={[styles.quickActionButton, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+            style={[
+              styles.quickActionButton,
+              { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" },
+            ]}
             onPress={() => handleQuickAction(action)}
           >
             <Ionicons
               name={action.icon as any}
               size={24}
-              color={isDark ? '#007AFF' : '#007AFF'}
+              color={isDark ? "#007AFF" : "#007AFF"}
             />
-            <Text style={[styles.quickActionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+            <Text
+              style={[
+                styles.quickActionText,
+                { color: isDark ? "#FFFFFF" : "#000000" },
+              ]}
+            >
               {action.title}
             </Text>
           </TouchableOpacity>
@@ -247,17 +278,30 @@ export default function AIChatPanel({
       hideModalContentWhileAnimating={true}
     >
       <KeyboardAvoidingView
-        style={[styles.container, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 20}
+        style={[
+          styles.container,
+          { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
+        ]}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 0 : 20}
       >
         {/* Header */}
-        <View style={[styles.header, { borderBottomColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+        <View
+          style={[
+            styles.header,
+            { borderBottomColor: isDark ? "#2C2C2E" : "#E5E5EA" },
+          ]}
+        >
           <View style={styles.handleBar} />
           <View style={styles.headerContent}>
             <View style={styles.headerLeft}>
               <Ionicons name="sparkles" size={24} color="#007AFF" />
-              <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+              <Text
+                style={[
+                  styles.headerTitle,
+                  { color: isDark ? "#FFFFFF" : "#000000" },
+                ]}
+              >
                 AI Assistant
               </Text>
             </View>
@@ -270,25 +314,39 @@ export default function AIChatPanel({
                 <Ionicons
                   name="refresh-outline"
                   size={20}
-                  color={messages.length === 0 ? '#8E8E93' : (isDark ? '#FFFFFF' : '#000000')}
+                  color={
+                    messages.length === 0
+                      ? "#8E8E93"
+                      : isDark
+                        ? "#FFFFFF"
+                        : "#000000"
+                  }
                 />
               </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={onClose}
-              >
-                <Ionicons name="close" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+              <TouchableOpacity style={styles.headerButton} onPress={onClose}>
+                <Ionicons
+                  name="close"
+                  size={24}
+                  color={isDark ? "#FFFFFF" : "#000000"}
+                />
               </TouchableOpacity>
             </View>
           </View>
-          <Text style={[styles.pageContext, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
+          <Text
+            style={[
+              styles.pageContext,
+              { color: isDark ? "#8E8E93" : "#6B6B6B" },
+            ]}
+          >
             {currentPageTitle}
           </Text>
         </View>
 
         {/* Messages or Quick Actions */}
         <View style={styles.content}>
-          {messages.length === 0 ? renderQuickActions() : (
+          {messages.length === 0 ? (
+            renderQuickActions()
+          ) : (
             <FlatList
               ref={flatListRef}
               data={messages}
@@ -302,15 +360,28 @@ export default function AIChatPanel({
         </View>
 
         {/* Input Area */}
-        <View style={[styles.inputContainer, { borderTopColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
-          <View style={[styles.inputWrapper, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+        <View
+          style={[
+            styles.inputContainer,
+            { borderTopColor: isDark ? "#2C2C2E" : "#E5E5EA" },
+          ]}
+        >
+          <View
+            style={[
+              styles.inputWrapper,
+              { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" },
+            ]}
+          >
             <TextInput
               ref={inputRef}
-              style={[styles.textInput, { color: isDark ? '#FFFFFF' : '#000000' }]}
+              style={[
+                styles.textInput,
+                { color: isDark ? "#FFFFFF" : "#000000" },
+              ]}
               value={inputText}
               onChangeText={setInputText}
               placeholder="Ask about this page..."
-              placeholderTextColor={isDark ? '#8E8E93' : '#6B6B6B'}
+              placeholderTextColor={isDark ? "#8E8E93" : "#6B6B6B"}
               multiline
               maxLength={1000}
               editable={!isLoading}
@@ -320,7 +391,7 @@ export default function AIChatPanel({
                 styles.sendButton,
                 {
                   opacity: inputText.trim() && !isLoading ? 1 : 0.5,
-                  backgroundColor: '#007AFF',
+                  backgroundColor: "#007AFF",
                 },
               ]}
               onPress={handleSendMessage}
@@ -342,19 +413,19 @@ export default function AIChatPanel({
 const styles = StyleSheet.create({
   modal: {
     margin: 0,
-    justifyContent: 'flex-end',
+    justifyContent: "flex-end",
   },
   container: {
-    height: '80%',
+    height: "80%",
     borderTopLeftRadius: 20,
     borderTopRightRadius: 20,
   },
   handleBar: {
     width: 40,
     height: 4,
-    backgroundColor: '#D1D1D6',
+    backgroundColor: "#D1D1D6",
     borderRadius: 2,
-    alignSelf: 'center',
+    alignSelf: "center",
     marginTop: 8,
   },
   header: {
@@ -363,23 +434,23 @@ const styles = StyleSheet.create({
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginTop: 16,
   },
   headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
     marginLeft: 8,
   },
   headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerButton: {
     padding: 4,
@@ -397,24 +468,24 @@ const styles = StyleSheet.create({
   },
   quickActionsTitle: {
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: "600",
     marginBottom: 16,
   },
   quickActionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
   },
   quickActionButton: {
-    width: '48%',
+    width: "48%",
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: 12,
   },
   quickActionText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
     marginTop: 8,
   },
   messagesList: {
@@ -428,13 +499,13 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   userMessage: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   assistantMessage: {
-    alignItems: 'flex-start',
+    alignItems: "flex-start",
   },
   messageBubble: {
-    maxWidth: '80%',
+    maxWidth: "80%",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderRadius: 18,
@@ -445,7 +516,7 @@ const styles = StyleSheet.create({
   },
   streamingIndicator: {
     marginTop: 8,
-    alignItems: 'center',
+    alignItems: "center",
   },
   timestamp: {
     fontSize: 12,
@@ -458,8 +529,8 @@ const styles = StyleSheet.create({
     borderTopWidth: StyleSheet.hairlineWidth,
   },
   inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
+    flexDirection: "row",
+    alignItems: "flex-end",
     borderRadius: 20,
     paddingHorizontal: 16,
     paddingVertical: 8,
@@ -474,8 +545,8 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginLeft: 8,
   },
-}); 
+});

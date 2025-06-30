@@ -1,5 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Modal from 'react-native-modal';
 import { v4 as uuidv4 } from 'uuid';
@@ -37,6 +37,8 @@ interface Tab {
   canGoBack: boolean;
   canGoForward: boolean;
   isIncognito: boolean;
+  isActive?: boolean;
+  lastVisited?: string;
 }
 
 interface ChatMessage {
@@ -331,8 +333,8 @@ export default function BrowserScreen() {
         try {
           suggestions = await aiService.generateSearchSuggestions(
             query, 
-            historyItems, 
-            bookmarkItems
+            history, 
+            bookmarks
           );
         } catch (error) {
           console.log('AI suggestions failed, using fallback');
@@ -365,7 +367,7 @@ export default function BrowserScreen() {
 
     // Search in history (only for non-incognito tabs)
     if (!currentTab?.isIncognito) {
-      const historyMatches = historyItems
+      const historyMatches = history
         .filter(url => url.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 3);
 
@@ -379,7 +381,7 @@ export default function BrowserScreen() {
     }
 
     // Search in bookmarks
-    const bookmarkMatches = bookmarkItems
+    const bookmarkMatches = bookmarks
       .filter(url => url.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 2);
 
@@ -404,7 +406,7 @@ export default function BrowserScreen() {
   };
 
   const handleRefresh = () => {
-    setNavigationCommand('reload');
+    setNavigationCommand({ type: 'refresh' });
   };
 
   const handleGoBack = () => {
@@ -591,21 +593,30 @@ export default function BrowserScreen() {
 
   // AI Chat handlers
   const handleToggleAI = () => {
-    if (!aiConfigured) {
-      Alert.alert(
-        'AI Not Configured',
-        'Please configure your OpenAI API key in Settings to use AI features.',
-        [
-          { text: 'Cancel', style: 'cancel' },
-          { text: 'Go to Settings', onPress: () => {
-            // This would navigate to settings
-            console.log('Navigate to settings');
-          }},
-        ]
-      );
-      return;
-    }
     setAiChatVisible(!aiChatVisible);
+  };
+
+  // 新增：快速AI Chat功能 - 自动获取当前页面上下文
+  const handleQuickAIChat = () => {
+    if (!currentTab) return;
+    
+    // 设置页面上下文
+    setAIContext({
+      type: 'quick_chat',
+      title: currentTab.title,
+      url: currentTab.url,
+      content: currentPageContent || ''
+    });
+    
+    // 打开AI Chat面板
+    setAiChatVisible(true);
+    
+    // 如果当前页面内容为空，尝试从WebView获取
+    if (!currentPageContent) {
+      // 通过WebView注入的脚本自动获取页面内容
+      // 这将触发 'page_content_extracted' 消息
+      console.log('Requesting page content extraction for AI chat');
+    }
   };
 
   const handleSendAIMessage = async (message: string, context: string): Promise<ReadableStream<string>> => {
@@ -955,6 +966,8 @@ export default function BrowserScreen() {
         onShowDownloads={() => setDownloadManagerVisible(true)}
         downloadCount={downloads.filter(d => d.status === 'downloading' || d.status === 'pending').length}
         onUserScriptsPress={() => setShowUserScripts(true)}
+        onQuickAIChat={handleQuickAIChat}
+        aiConfigured={aiConfigured}
       />
 
       {/* Performance Indicator */}

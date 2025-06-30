@@ -45,13 +45,7 @@
       ],
       "expo-sqlite",
       "expo-secure-store",
-      [
-        "react-native-webview",
-        {
-          "allowsInlineMediaPlayback": true,
-          "bounces": false
-        }
-      ]
+      "@metamask/react-native-webview"
     ],
     "experiments": {
       "typedRoutes": true

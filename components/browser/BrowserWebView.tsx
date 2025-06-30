@@ -1,9 +1,9 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import React, { useEffect, useRef, useState } from 'react';
-import { Alert, StyleSheet, View } from 'react-native';
-import { WebView } from 'react-native-webview';
-import { performanceService } from '../../services/PerformanceService';
-import { userScriptService } from '../../services/UserScriptService';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { WebView } from "@metamask/react-native-webview";
+import React, { useEffect, useRef, useState } from "react";
+import { Alert, StyleSheet, View } from "react-native";
+import { performanceService } from "../../services/PerformanceService";
+import { userScriptService } from "../../services/UserScriptService";
 
 interface BrowserWebViewProps {
   tabId: string;
@@ -15,7 +15,7 @@ interface BrowserWebViewProps {
   onLoadEnd: (tabId: string, url: string, title: string) => void;
   onError: (tabId: string, error: any) => void;
   onMessage: (tabId: string, message: any) => void;
-  navigationCommand?: 'back' | 'forward' | 'reload' | null;
+  navigationCommand?: "back" | "forward" | "reload" | null;
   onNavigationCommandExecuted?: () => void;
 }
 
@@ -36,15 +36,15 @@ export default function BrowserWebView({
   const colorScheme = useColorScheme();
   const [currentUrl, setCurrentUrl] = useState(initialUrl);
   const [loadStartTime, setLoadStartTime] = useState<number>(0);
-  
-  const isDark = colorScheme === 'dark';
+
+  const isDark = colorScheme === "dark";
 
   // Register WebView for performance monitoring
   useEffect(() => {
     if (webViewRef.current) {
       performanceService.registerWebView(tabId, webViewRef.current);
     }
-    
+
     return () => {
       performanceService.unregisterWebView(tabId);
     };
@@ -54,13 +54,13 @@ export default function BrowserWebView({
   useEffect(() => {
     if (navigationCommand && webViewRef.current) {
       switch (navigationCommand) {
-        case 'back':
+        case "back":
           webViewRef.current.goBack();
           break;
-        case 'forward':
+        case "forward":
           webViewRef.current.goForward();
           break;
-        case 'reload':
+        case "reload":
           webViewRef.current.reload();
           break;
       }
@@ -74,24 +74,26 @@ export default function BrowserWebView({
       setCurrentUrl(url);
       // For proper URL navigation, we need to check if it's a valid URL
       const formattedUrl = formatUrl(url);
-      webViewRef.current.postMessage(JSON.stringify({
-        type: 'navigate',
-        url: formattedUrl
-      }));
+      webViewRef.current.postMessage(
+        JSON.stringify({
+          type: "navigate",
+          url: formattedUrl,
+        }),
+      );
     }
   };
 
   const formatUrl = (input: string): string => {
     // If it's already a complete URL, return as is
-    if (input.includes('://')) {
+    if (input.includes("://")) {
       return input;
     }
-    
+
     // Check if it looks like a domain
-    if (input.includes('.') && !input.includes(' ')) {
+    if (input.includes(".") && !input.includes(" ")) {
       return `https://${input}`;
     }
-    
+
     // Otherwise, treat as search query
     return `https://www.google.com/search?q=${encodeURIComponent(input)}`;
   };
@@ -112,15 +114,15 @@ export default function BrowserWebView({
   const handleLoadEnd = async (event: any) => {
     const { url, title } = event.nativeEvent;
     const loadTime = Date.now() - loadStartTime;
-    
+
     // Record performance metrics
     performanceService.measureLoadTime(loadStartTime);
-    
-    onLoadEnd(tabId, url, title || 'Untitled');
-    
+
+    onLoadEnd(tabId, url, title || "Untitled");
+
     // Inject user scripts
     await injectUserScripts(url);
-    
+
     // Inject AI script
     injectAIScript();
   };
@@ -134,7 +136,7 @@ export default function BrowserWebView({
       const data = JSON.parse(event.nativeEvent.data);
       onMessage(tabId, data);
     } catch (error) {
-      console.error('Failed to parse WebView message:', error);
+      console.error("Failed to parse WebView message:", error);
     }
   };
 
@@ -142,7 +144,7 @@ export default function BrowserWebView({
   const injectUserScripts = async (url: string) => {
     try {
       const scriptsToRun = userScriptService.getScriptsForUrl(url);
-      
+
       for (const script of scriptsToRun) {
         if (script.enabled) {
           // Create a wrapper that respects the run timing
@@ -151,7 +153,7 @@ export default function BrowserWebView({
               const runScript = function() {
                 try {
                   ${script.code}
-                  
+
                   // Notify about script execution
                   window.ReactNativeWebView.postMessage(JSON.stringify({
                     type: 'user_script_executed',
@@ -170,7 +172,7 @@ export default function BrowserWebView({
                   }));
                 }
               };
-              
+
               // Execute based on run timing
               if ('${script.runAt}' === 'document-start') {
                 runScript();
@@ -192,21 +194,23 @@ export default function BrowserWebView({
                 runScript(); // Default
               }
             })();
-            
+
             true; // Note: This is required for iOS
           `;
-          
+
           webViewRef.current?.injectJavaScript(wrappedScript);
-          
+
           // Update run count
           script.runCount++;
           if (!script.isBuiltIn) {
-            await userScriptService.updateScript(script.id, { runCount: script.runCount });
+            await userScriptService.updateScript(script.id, {
+              runCount: script.runCount,
+            });
           }
         }
       }
     } catch (error) {
-      console.error('Failed to inject user scripts:', error);
+      console.error("Failed to inject user scripts:", error);
     }
   };
 
@@ -215,7 +219,7 @@ export default function BrowserWebView({
       // AI Assistant Integration Script with Performance Monitoring
       (function() {
         const startTime = performance.now();
-        
+
         // Performance monitoring
         const observer = new PerformanceObserver((list) => {
           for (const entry of list.getEntries()) {
@@ -229,13 +233,13 @@ export default function BrowserWebView({
             }
           }
         });
-        
+
         try {
           observer.observe({ entryTypes: ['navigation', 'resource'] });
         } catch (e) {
           // Performance observer not supported
         }
-        
+
         // Memory monitoring (if available)
         if (performance.memory) {
           setInterval(() => {
@@ -247,7 +251,7 @@ export default function BrowserWebView({
             }));
           }, 10000); // Report every 10 seconds
         }
-        
+
         // Create AI button
         const aiButton = document.createElement('div');
         aiButton.id = 'vai-ai-button';
@@ -269,7 +273,7 @@ export default function BrowserWebView({
         \`;
         aiButton.innerHTML = '✨';
         aiButton.style.fontSize = '24px';
-        
+
         aiButton.addEventListener('click', function() {
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'ai_button_clicked',
@@ -278,9 +282,9 @@ export default function BrowserWebView({
             pageUrl: window.location.href
           }));
         });
-        
+
         document.body.appendChild(aiButton);
-        
+
         // Enhanced selection handling
         document.addEventListener('mouseup', function() {
           const selection = window.getSelection();
@@ -292,7 +296,7 @@ export default function BrowserWebView({
             }));
           }
         });
-        
+
         // Page content extraction for AI
         function extractPageContent() {
           const content = {
@@ -309,20 +313,20 @@ export default function BrowserWebView({
               alt: img.alt
             })).slice(0, 5)
           };
-          
+
           window.ReactNativeWebView.postMessage(JSON.stringify({
             type: 'page_content_extracted',
             content: content
           }));
         }
-        
+
         // Extract content when page is fully loaded
         if (document.readyState === 'complete') {
           extractPageContent();
         } else {
           window.addEventListener('load', extractPageContent);
         }
-        
+
         // Handle navigation messages from React Native
         window.addEventListener('message', function(event) {
           try {
@@ -334,7 +338,7 @@ export default function BrowserWebView({
             console.error('Failed to parse message:', error);
           }
         });
-        
+
         // Report script injection time
         const endTime = performance.now();
         window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -342,7 +346,7 @@ export default function BrowserWebView({
           injectionTime: endTime - startTime
         }));
       })();
-      
+
       true; // Note: This is required for iOS
     `;
 
@@ -352,7 +356,7 @@ export default function BrowserWebView({
   const userAgent = `Mozilla/5.0 (iPhone; CPU iPhone OS 14_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/14.0 Mobile/15E148 Safari/604.1 VaiBrowser/1.0`;
 
   return (
-    <View style={[styles.container, { display: isActive ? 'flex' : 'none' }]}>
+    <View style={[styles.container, { display: isActive ? "flex" : "none" }]}>
       <WebView
         ref={webViewRef}
         source={{ uri: currentUrl }}
@@ -379,14 +383,24 @@ export default function BrowserWebView({
         sharedCookiesEnabled={true}
         allowFileAccess={true}
         allowUniversalAccessFromFileURLs={true}
-        originWhitelist={['*']}
+        originWhitelist={["*"]}
         renderLoading={() => (
-          <View style={[styles.loadingContainer, { backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
+          <View
+            style={[
+              styles.loadingContainer,
+              { backgroundColor: isDark ? "#000000" : "#FFFFFF" },
+            ]}
+          >
             {/* Loading indicator is handled by the WebView itself */}
           </View>
         )}
         renderError={(errorDomain, errorCode, errorDesc) => (
-          <View style={[styles.errorContainer, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+          <View
+            style={[
+              styles.errorContainer,
+              { backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7" },
+            ]}
+          >
             {/* Error handling will be managed by the parent component */}
           </View>
         )}
@@ -398,12 +412,12 @@ export default function BrowserWebView({
         onContentProcessDidTerminate={() => {
           // Handle WebView crashes
           Alert.alert(
-            'Page Crashed',
-            'The web page has crashed. Would you like to reload it?',
+            "Page Crashed",
+            "The web page has crashed. Would you like to reload it?",
             [
-              { text: 'Cancel', style: 'cancel' },
-              { text: 'Reload', onPress: () => webViewRef.current?.reload() }
-            ]
+              { text: "Cancel", style: "cancel" },
+              { text: "Reload", onPress: () => webViewRef.current?.reload() },
+            ],
           );
         }}
       />
@@ -420,12 +434,13 @@ const styles = StyleSheet.create({
   },
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
-}); 
+});
+

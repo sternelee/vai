@@ -1,6 +1,6 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   FlatList,
@@ -43,6 +43,8 @@ interface AddressBarProps {
   onShowDownloads?: () => void;
   downloadCount?: number;
   onUserScriptsPress: () => void;
+  onQuickAIChat?: () => void;
+  aiConfigured?: boolean;
 }
 
 export default function AddressBar({
@@ -69,6 +71,8 @@ export default function AddressBar({
   onShowDownloads,
   downloadCount,
   onUserScriptsPress,
+  onQuickAIChat,
+  aiConfigured = false,
 }: AddressBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -277,6 +281,20 @@ export default function AddressBar({
                 name={isBookmarked ? "bookmark" : "bookmark-outline"}
                 size={20}
                 color={isBookmarked ? "#007AFF" : (isDark ? '#8E8E93' : '#6B6B6B')}
+              />
+            </TouchableOpacity>
+          )}
+
+          {/* Quick AI Chat Button */}
+          {onQuickAIChat && aiConfigured && !isIncognito && (
+            <TouchableOpacity 
+              style={[styles.actionButton, styles.quickAIChatButton]} 
+              onPress={onQuickAIChat}
+            >
+              <Ionicons
+                name="chatbubble-ellipses"
+                size={18}
+                color="#007AFF"
               />
             </TouchableOpacity>
           )}
@@ -584,5 +602,10 @@ const styles = StyleSheet.create({
   },
   downloadButtonContainer: {
     // Add appropriate styles for download button container
+  },
+  quickAIChatButton: {
+    backgroundColor: '#F0F8FF',
+    borderRadius: 16,
+    paddingHorizontal: 2,
   },
 }); 
