@@ -1,16 +1,17 @@
+import { getThemeColors } from '@/constants/ArcTheme';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
-  Alert,
-  Dimensions,
-  Image,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    Alert,
+    Dimensions,
+    Image,
+    ScrollView,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View
 } from 'react-native';
 
 interface HomePageShortcut {
@@ -53,11 +54,75 @@ export default function HomePage({
   currentPageTitle,
   aiConfigured,
 }: HomePageProps) {
-  const [searchQuery, setSearchQuery] = useState('');
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const themeColors = getThemeColors(isDark);
 
-  // 预设的快速操作
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleSearch = () => {
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim();
+      if (query.includes('.') && !query.includes(' ')) {
+        // 看起来像URL
+        const url = query.startsWith('http') ? query : `https://${query}`;
+        onNavigate(url);
+      } else {
+        // 搜索查询
+        onNavigate(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
+      }
+      setSearchQuery('');
+    }
+  };
+
+  const handleQuickAction = (action: string) => {
+    switch (action) {
+      case 'ai':
+        onShowAIChat();
+        break;
+      case 'resources':
+        onShowResourceSniffer();
+        break;
+      case 'scripts':
+        onShowUserScripts();
+        break;
+      case 'downloads':
+        onShowDownloads();
+        break;
+      case 'bookmarks':
+        onShowBookmarks();
+        break;
+      case 'history':
+        onShowHistory();
+        break;
+    }
+  };
+
+  const handleAddCurrentPage = () => {
+    if (!currentPageUrl || !currentPageTitle) {
+      Alert.alert('无法添加', '当前页面信息不完整');
+      return;
+    }
+
+    // 检查是否已经存在
+    const exists = shortcuts.some(shortcut => shortcut.url === currentPageUrl);
+    if (exists) {
+      Alert.alert('已存在', '该页面已经添加到主页');
+      return;
+    }
+
+    const newShortcut: HomePageShortcut = {
+      id: Date.now().toString(),
+      title: currentPageTitle,
+      url: currentPageUrl,
+      addedAt: new Date().toISOString(),
+    };
+
+    const updatedShortcuts = [...shortcuts, newShortcut];
+    onUpdateShortcuts(updatedShortcuts);
+    Alert.alert('添加成功', `"${currentPageTitle}" 已添加到主页`);
+  };
+
   const quickActions = [
     {
       id: 'ai_chat',
@@ -143,45 +208,7 @@ export default function HomePage({
     },
   ];
 
-  const handleSearch = () => {
-    if (searchQuery.trim()) {
-      const query = searchQuery.trim();
-      if (query.includes('.') && !query.includes(' ')) {
-        // 看起来像URL
-        const url = query.startsWith('http') ? query : `https://${query}`;
-        onNavigate(url);
-      } else {
-        // 搜索查询
-        onNavigate(`https://www.google.com/search?q=${encodeURIComponent(query)}`);
-      }
-      setSearchQuery('');
-    }
-  };
 
-  const handleAddCurrentPage = () => {
-    if (!currentPageUrl || !currentPageTitle) {
-      Alert.alert('无法添加', '当前页面信息不完整');
-      return;
-    }
-
-    // 检查是否已经存在
-    const exists = shortcuts.some(shortcut => shortcut.url === currentPageUrl);
-    if (exists) {
-      Alert.alert('已存在', '该页面已经添加到主页');
-      return;
-    }
-
-    const newShortcut: HomePageShortcut = {
-      id: Date.now().toString(),
-      title: currentPageTitle,
-      url: currentPageUrl,
-      addedAt: new Date().toISOString(),
-    };
-
-    const updatedShortcuts = [...shortcuts, newShortcut];
-    onUpdateShortcuts(updatedShortcuts);
-    Alert.alert('添加成功', `"${currentPageTitle}" 已添加到主页`);
-  };
 
   const handleRemoveShortcut = (shortcutId: string) => {
     Alert.alert(
@@ -231,20 +258,20 @@ export default function HomePage({
     >
       <View style={styles.shortcutIcon}>
         {shortcut.favicon ? (
-          <Image 
-            source={{ uri: shortcut.favicon }} 
+          <Image
+            source={{ uri: shortcut.favicon }}
             style={styles.favicon}
             onError={() => {/* 处理图标加载失败 */}}
           />
         ) : (
-          <Ionicons 
-            name="globe-outline" 
-            size={24} 
-            color={isDark ? '#8E8E93' : '#6B6B6B'} 
+          <Ionicons
+            name="globe-outline"
+            size={24}
+            color={isDark ? '#8E8E93' : '#6B6B6B'}
           />
         )}
       </View>
-      <Text 
+      <Text
         style={[styles.shortcutTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}
         numberOfLines={2}
       >
@@ -262,7 +289,7 @@ export default function HomePage({
   );
 
   return (
-    <ScrollView 
+    <ScrollView
       style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}
       contentContainerStyle={styles.content}
       showsVerticalScrollIndicator={false}
@@ -279,10 +306,10 @@ export default function HomePage({
 
       {/* Search Bar */}
       <View style={[styles.searchContainer, { backgroundColor: isDark ? '#2C2C2E' : '#FFFFFF' }]}>
-        <Ionicons 
-          name="search" 
-          size={20} 
-          color={isDark ? '#8E8E93' : '#6B6B6B'} 
+        <Ionicons
+          name="search"
+          size={20}
+          color={isDark ? '#8E8E93' : '#6B6B6B'}
           style={styles.searchIcon}
         />
         <TextInput
@@ -547,4 +574,4 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '400',
   },
-}); 
+});

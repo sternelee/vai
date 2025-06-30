@@ -1,3 +1,4 @@
+import { ArcTheme, getThemeColors } from '@/constants/ArcTheme';
 import { useColorScheme } from '@/hooks/useColorScheme';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -5,6 +6,7 @@ import {
     Dimensions,
     Modal,
     PanResponder,
+    Platform,
     StyleSheet,
     TouchableWithoutFeedback,
     View,
@@ -22,6 +24,7 @@ interface BottomSheetProps {
   snapPoints?: number[];
   initialSnapIndex?: number;
   backdropOpacity?: number;
+  showHandle?: boolean;
 }
 
 export default function BottomSheet({
@@ -33,41 +36,56 @@ export default function BottomSheet({
   enableSwipeDown = true,
   snapPoints = [0],
   initialSnapIndex = 0,
-  backdropOpacity = 0.5,
+  backdropOpacity = 0.4,
+  showHandle = true,
 }: BottomSheetProps) {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
+  const themeColors = getThemeColors(isDark);
 
   const translateY = useRef(new Animated.Value(height)).current;
   const backdropOpacityAnim = useRef(new Animated.Value(0)).current;
+  const scaleAnim = useRef(new Animated.Value(0.95)).current;
   const [currentSnapIndex, setCurrentSnapIndex] = useState(initialSnapIndex);
 
   useEffect(() => {
     if (isVisible) {
-      // Show animation
+      // Arc-style entrance animation with slight scale effect
       Animated.parallel([
-        Animated.timing(translateY, {
+        Animated.spring(translateY, {
           toValue: snapPoints[currentSnapIndex],
-          duration: 300,
+          damping: 20,
+          stiffness: 300,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacityAnim, {
           toValue: backdropOpacity,
-          duration: 300,
+          duration: ArcTheme.animation.normal,
+          useNativeDriver: true,
+        }),
+        Animated.spring(scaleAnim, {
+          toValue: 1,
+          damping: 18,
+          stiffness: 200,
           useNativeDriver: true,
         }),
       ]).start();
     } else {
-      // Hide animation
+      // Arc-style exit animation
       Animated.parallel([
         Animated.timing(translateY, {
           toValue: height,
-          duration: 250,
+          duration: ArcTheme.animation.normal,
           useNativeDriver: true,
         }),
         Animated.timing(backdropOpacityAnim, {
           toValue: 0,
-          duration: 250,
+          duration: ArcTheme.animation.normal,
+          useNativeDriver: true,
+        }),
+        Animated.timing(scaleAnim, {
+          toValue: 0.95,
+          duration: ArcTheme.animation.normal,
           useNativeDriver: true,
         }),
       ]).start();
@@ -86,13 +104,15 @@ export default function BottomSheet({
       onPanResponderMove: (evt, gestureState) => {
         if (!enableSwipeDown) return;
 
-        // Only allow downward movement
+        // Only allow downward movement with elastic effect
         const dy = Math.max(0, gestureState.dy);
-        translateY.setValue(dy);
+        const elasticDy = dy > 50 ? 50 + (dy - 50) * 0.3 : dy;
+        translateY.setValue(elasticDy);
 
-        // Update backdrop opacity based on position
-        const progress = Math.max(0, Math.min(1, dy / (height - snapPoints[currentSnapIndex])));
-        backdropOpacityAnim.setValue(backdropOpacity * (1 - progress * 0.5));
+        // Update backdrop opacity and scale based on position
+        const progress = Math.max(0, Math.min(1, elasticDy / (height - snapPoints[currentSnapIndex])));
+        backdropOpacityAnim.setValue(backdropOpacity * (1 - progress * 0.6));
+        scaleAnim.setValue(1 - progress * 0.05);
       },
       onPanResponderRelease: (evt, gestureState) => {
         if (!enableSwipeDown) return;
@@ -100,12 +120,12 @@ export default function BottomSheet({
         translateY.flattenOffset();
 
         const { dy, vy } = gestureState;
-        const shouldClose = dy > height * 0.3 || vy > 1000;
+        const shouldClose = dy > height * 0.25 || vy > 800;
 
         if (shouldClose) {
           onClose();
         } else {
-          // Snap back to original position
+          // Snap back with Arc-style spring animation
           Animated.parallel([
             Animated.spring(translateY, {
               toValue: snapPoints[currentSnapIndex],
@@ -115,7 +135,13 @@ export default function BottomSheet({
             }),
             Animated.timing(backdropOpacityAnim, {
               toValue: backdropOpacity,
-              duration: 200,
+              duration: ArcTheme.animation.fast,
+              useNativeDriver: true,
+            }),
+            Animated.spring(scaleAnim, {
+              toValue: 1,
+              damping: 18,
+              stiffness: 200,
               useNativeDriver: true,
             }),
           ]).start();
@@ -139,46 +165,69 @@ export default function BottomSheet({
       statusBarTranslucent
     >
       <View style={styles.container}>
-        {/* Backdrop */}
+        {/* Arc-style backdrop with gradient */}
         <TouchableWithoutFeedback onPress={handleBackdropPress}>
           <Animated.View
             style={[
               styles.backdrop,
               {
+                backgroundColor: isDark
+                  ? ArcTheme.gradients.overlay.dark
+                  : ArcTheme.gradients.overlay.light,
                 opacity: backdropOpacityAnim,
               },
             ]}
           />
         </TouchableWithoutFeedback>
 
-        {/* Bottom Sheet */}
+        {/* Arc-style bottom sheet */}
         <Animated.View
           style={[
             styles.bottomSheet,
             {
-              backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+              backgroundColor: themeColors.card,
               height: height,
-              transform: [{ translateY }],
+              borderTopColor: themeColors.border,
+              transform: [
+                { translateY },
+                { scale: scaleAnim },
+              ],
+              // Arc-style shadow
+              ...ArcTheme.shadows.xl,
+              // Add subtle border for Arc effect
+              borderTopWidth: Platform.OS === 'ios' ? 0.5 : 1,
             },
           ]}
           {...panResponder.panHandlers}
         >
-          {/* Handle Bar */}
-          <View style={styles.handleContainer}>
-            <View
-              style={[
-                styles.handle,
-                {
-                  backgroundColor: isDark ? '#48484A' : '#D1D1D6',
-                },
-              ]}
-            />
-          </View>
+          {/* Arc-style handle */}
+          {showHandle && (
+            <View style={styles.handleContainer}>
+              <View
+                style={[
+                  styles.handle,
+                  {
+                    backgroundColor: themeColors.text.tertiary,
+                  },
+                ]}
+              />
+            </View>
+          )}
 
-          {/* Content */}
-          <View style={styles.content}>
+          {/* Content with Arc-style padding */}
+          <View
+            style={[
+              styles.content,
+              {
+                paddingTop: showHandle ? ArcTheme.spacing.sm : ArcTheme.spacing.lg,
+              }
+            ]}
+          >
             {children}
           </View>
+
+          {/* Arc-style bottom safe area */}
+          <View style={styles.bottomSafeArea} />
         </Animated.View>
       </View>
     </Modal>
@@ -192,29 +241,33 @@ const styles = StyleSheet.create({
   },
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
   },
   bottomSheet: {
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 10,
+    borderTopLeftRadius: ArcTheme.borderRadius.xl,
+    borderTopRightRadius: ArcTheme.borderRadius.xl,
+    minHeight: 100,
+    // Arc-style backdrop filter effect (approximated)
+    ...(Platform.OS === 'ios' && {
+      backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    }),
   },
   handleContainer: {
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingTop: ArcTheme.spacing.sm,
+    paddingBottom: ArcTheme.spacing.xs,
   },
   handle: {
-    width: 40,
-    height: 4,
-    borderRadius: 2,
+    width: 36,
+    height: ArcTheme.layout.bottomSheetHandle,
+    borderRadius: ArcTheme.borderRadius.full,
+    opacity: 0.6,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingHorizontal: ArcTheme.spacing.lg,
+  },
+  bottomSafeArea: {
+    height: Platform.OS === 'ios' ? 34 : ArcTheme.spacing.base, // iPhone home indicator space
+    backgroundColor: 'transparent',
   },
 });

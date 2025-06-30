@@ -1,15 +1,16 @@
+import { ArcTheme, getThemeColors } from "@/constants/ArcTheme";
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Ionicons } from "@expo/vector-icons";
-import { useEffect, useRef, useState } from "react";
+import React, { useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
-  Keyboard,
+  Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 interface SearchSuggestion {
@@ -84,39 +85,32 @@ export default function AddressBar({
   onShowToolsMenu,
   showAddToHome,
 }: AddressBarProps) {
-  const [inputValue, setInputValue] = useState("");
-  const [isFocused, setIsFocused] = useState(false);
-  const [showSuggestions, setShowSuggestions] = useState(false);
   const colorScheme = useColorScheme();
-  const inputRef = useRef<TextInput>(null);
-
   const isDark = colorScheme === "dark";
+  const themeColors = getThemeColors(isDark);
 
-  useEffect(() => {
-    if (!isFocused) {
-      setInputValue(currentUrl);
-    }
-  }, [currentUrl, isFocused]);
+  const inputRef = useRef<TextInput>(null);
+  const [isFocused, setIsFocused] = useState(false);
+  const [inputValue, setInputValue] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
 
   const handleFocus = () => {
     setIsFocused(true);
-    setShowSuggestions(true);
-    // Select all text when focused for easy editing
-    setTimeout(() => {
-      inputRef.current?.setSelection(0, inputValue.length);
-    }, 100);
+    setInputValue(currentUrl);
+    setShowSuggestions(suggestions.length > 0);
   };
 
   const handleBlur = () => {
     setIsFocused(false);
     setShowSuggestions(false);
-    setInputValue(currentUrl);
+    setInputValue("");
   };
 
   const handleTextChange = (text: string) => {
     setInputValue(text);
+    onShowSuggestions(text);
+
     if (text.length > 0) {
-      onShowSuggestions(text);
       setShowSuggestions(true);
     } else {
       setShowSuggestions(false);
@@ -126,53 +120,55 @@ export default function AddressBar({
   const handleSubmit = () => {
     if (inputValue.trim()) {
       onNavigate(inputValue.trim());
-      setShowSuggestions(false);
-      Keyboard.dismiss();
       inputRef.current?.blur();
     }
   };
 
   const handleSuggestionPress = (suggestion: SearchSuggestion) => {
-    setInputValue(suggestion.query);
     onNavigate(suggestion.query);
-    setShowSuggestions(false);
-    Keyboard.dismiss();
     inputRef.current?.blur();
   };
 
   const getSecurityIcon = (url: string = "") => {
-    if (isIncognito) {
-      return <Ionicons name="eye-off" size={16} color="#8E44AD" />;
-    }
-    if (url.startsWith("https://")) {
-      return <Ionicons name="lock-closed" size={16} color="#4CAF50" />;
-    } else if (url.startsWith("http://")) {
-      return <Ionicons name="information-circle" size={16} color="#FF9800" />;
+    if (!url || url === 'about:blank' || url.startsWith('vai://')) return null;
+
+    if (url.startsWith('https://')) {
+      return (
+        <Ionicons
+          name="lock-closed"
+          size={14}
+          color={ArcTheme.colors.success}
+        />
+      );
+    } else if (url.startsWith('http://')) {
+      return (
+        <Ionicons
+          name="information-circle"
+          size={14}
+          color={ArcTheme.colors.warning}
+        />
+      );
     }
     return null;
   };
 
   const getSuggestionIcon = (type: string) => {
     switch (type) {
-      case "url":
-        return "globe-outline";
-      case "history":
-        return "time-outline";
-      case "bookmark":
-        return "bookmark-outline";
-      case "search":
-      default:
-        return "search-outline";
+      case 'search': return 'search';
+      case 'url': return 'globe';
+      case 'history': return 'time';
+      case 'bookmark': return 'bookmark';
+      default: return 'search';
     }
   };
 
   const formatDisplayUrl = (url: string) => {
-    if (isIncognito) {
-      return "Incognito Mode";
-    }
+    if (!url || url === 'about:blank') return '';
+    if (url.startsWith('vai://')) return 'VaiBrowser 主页';
+
     try {
       const urlObj = new URL(url);
-      return urlObj.hostname + urlObj.pathname;
+      return urlObj.hostname + (urlObj.pathname !== '/' ? urlObj.pathname : '');
     } catch {
       return url;
     }
@@ -182,29 +178,35 @@ export default function AddressBar({
     <TouchableOpacity
       style={[
         styles.suggestionItem,
-        { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" },
+        {
+          backgroundColor: themeColors.card,
+          borderBottomColor: themeColors.divider,
+        }
       ]}
       onPress={() => handleSuggestionPress(item)}
+      activeOpacity={0.7}
     >
-      <Ionicons
-        name={getSuggestionIcon(item.type) as any}
-        size={20}
-        color={isDark ? "#8E8E93" : "#6B6B6B"}
-        style={styles.suggestionIcon}
-      />
+      <View style={styles.suggestionIcon}>
+        <Ionicons
+          name={getSuggestionIcon(item.type) as any}
+          size={18}
+          color={themeColors.text.secondary}
+        />
+      </View>
       <View style={styles.suggestionContent}>
         <Text
           style={[
             styles.suggestionText,
-            { color: isDark ? "#FFFFFF" : "#000000" },
+            { color: themeColors.text.primary },
           ]}
+          numberOfLines={1}
         >
           {item.query}
         </Text>
         <Text
           style={[
             styles.suggestionType,
-            { color: isDark ? "#8E8E93" : "#6B6B6B" },
+            { color: themeColors.text.tertiary },
           ]}
         >
           {item.type}
@@ -212,8 +214,8 @@ export default function AddressBar({
       </View>
       <Ionicons
         name="arrow-up-outline"
-        size={16}
-        color={isDark ? "#8E8E93" : "#6B6B6B"}
+        size={14}
+        color={themeColors.text.tertiary}
         style={{ transform: [{ rotate: "45deg" }] }}
       />
     </TouchableOpacity>
@@ -221,73 +223,88 @@ export default function AddressBar({
 
   return (
     <View style={styles.container}>
-      {/* Main Address Bar */}
+      {/* Arc-style main address bar */}
       <View
         style={[
           styles.addressBarContainer,
           {
-            backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+            backgroundColor: themeColors.surface,
+            borderBottomColor: themeColors.border,
             ...(isIncognito && {
-              backgroundColor: isDark ? "#1A1A1A" : "#F0F0F0",
-              borderBottomColor: "#8E44AD",
+              backgroundColor: isDark ? '#1A1A1A' : '#F0F0F0',
+              borderBottomColor: ArcTheme.colors.accent,
               borderBottomWidth: 2,
             }),
           },
         ]}
       >
-        {/* Navigation Controls */}
+        {/* Arc-style navigation controls */}
         <View style={styles.navigationControls}>
           <TouchableOpacity
-            style={[styles.navButton, { opacity: canGoBack ? 1 : 0.3 }]}
+            style={[
+              styles.navButton,
+              {
+                backgroundColor: canGoBack ? themeColors.interactive.hover : 'transparent',
+                opacity: canGoBack ? 1 : 0.4,
+              }
+            ]}
             onPress={onGoBack}
             disabled={!canGoBack}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="chevron-back"
-              size={24}
-              color={isDark ? "#FFFFFF" : "#000000"}
+              size={20}
+              color={themeColors.text.primary}
             />
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.navButton, { opacity: canGoForward ? 1 : 0.3 }]}
+            style={[
+              styles.navButton,
+              {
+                backgroundColor: canGoForward ? themeColors.interactive.hover : 'transparent',
+                opacity: canGoForward ? 1 : 0.4,
+              }
+            ]}
             onPress={onGoForward}
             disabled={!canGoForward}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="chevron-forward"
-              size={24}
-              color={isDark ? "#FFFFFF" : "#000000"}
+              size={20}
+              color={themeColors.text.primary}
             />
           </TouchableOpacity>
         </View>
 
-        {/* Address Input Container */}
+        {/* Arc-style address input container */}
         <View
           style={[
             styles.inputContainer,
             {
-              backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+              backgroundColor: themeColors.background,
+              borderColor: isFocused ? ArcTheme.colors.primary : themeColors.border,
               ...(isIncognito && {
-                backgroundColor: isDark ? "#2A2A2A" : "#E8E8E8",
-                borderColor: "#8E44AD",
-                borderWidth: 1,
+                backgroundColor: isDark ? '#2A2A2A' : '#E8E8E8',
+                borderColor: isFocused ? ArcTheme.colors.accent : ArcTheme.colors.accent + '40',
               }),
             },
           ]}
         >
-          {/* Security Icon */}
+          {/* Security icon */}
           <View style={styles.securityIcon}>
             {!isFocused && getSecurityIcon(currentUrl)}
           </View>
 
-          {/* Text Input */}
+          {/* Arc-style text input */}
           <TextInput
             ref={inputRef}
             style={[
               styles.textInput,
               {
-                color: isDark ? "#FFFFFF" : "#000000",
+                color: themeColors.text.primary,
                 ...(isIncognito && { fontStyle: "italic" }),
               },
             ]}
@@ -297,10 +314,10 @@ export default function AddressBar({
             onBlur={handleBlur}
             onSubmitEditing={handleSubmit}
             placeholder={
-              isIncognito ? "Incognito browsing..." : "Search or enter address"
+              isIncognito ? "私密浏览..." : "搜索或输入网址"
             }
             placeholderTextColor={
-              isIncognito ? "#8E44AD" : isDark ? "#8E8E93" : "#6B6B6B"
+              isIncognito ? ArcTheme.colors.accent : themeColors.text.tertiary
             }
             returnKeyType="go"
             autoCorrect={false}
@@ -309,86 +326,116 @@ export default function AddressBar({
             selectTextOnFocus
           />
 
-          {/* Bookmark Button */}
-          {onToggleBookmark && !isIncognito && (
-            <TouchableOpacity
-              style={styles.actionButton}
-              onPress={onToggleBookmark}
-            >
-              <Ionicons
-                name={isBookmarked ? "bookmark" : "bookmark-outline"}
-                size={20}
-                color={
-                  isBookmarked ? "#007AFF" : isDark ? "#8E8E93" : "#6B6B6B"
-                }
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Quick AI Chat Button */}
-          {onQuickAIChat && aiConfigured && !isIncognito && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.quickAIChatButton]}
-              onPress={onQuickAIChat}
-            >
-              <Ionicons name="chatbubble-ellipses" size={18} color="#007AFF" />
-            </TouchableOpacity>
-          )}
-
-          {/* Loading/Refresh Button */}
-          <TouchableOpacity style={styles.actionButton} onPress={onRefresh}>
-            {isLoading ? (
-              <ActivityIndicator
-                size="small"
-                color={isIncognito ? "#8E44AD" : isDark ? "#FFFFFF" : "#000000"}
-              />
-            ) : (
-              <Ionicons
-                name="refresh"
-                size={20}
-                color={isIncognito ? "#8E44AD" : isDark ? "#8E8E93" : "#6B6B6B"}
-              />
+          {/* In-input actions */}
+          <View style={styles.inputActions}>
+            {/* Bookmark toggle */}
+            {onToggleBookmark && !isIncognito && (
+              <TouchableOpacity
+                style={styles.inputActionButton}
+                onPress={onToggleBookmark}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name={isBookmarked ? "bookmark" : "bookmark-outline"}
+                  size={18}
+                  color={
+                    isBookmarked ? ArcTheme.colors.warning : themeColors.text.secondary
+                  }
+                />
+              </TouchableOpacity>
             )}
-          </TouchableOpacity>
+
+            {/* Quick AI Chat */}
+            {onQuickAIChat && aiConfigured && !isIncognito && (
+              <TouchableOpacity
+                style={[
+                  styles.inputActionButton,
+                  styles.quickAIButton,
+                  {
+                    backgroundColor: ArcTheme.colors.primary + '15',
+                    borderColor: ArcTheme.colors.primary + '25',
+                  }
+                ]}
+                onPress={onQuickAIChat}
+                activeOpacity={0.7}
+              >
+                <Ionicons
+                  name="chatbubble-ellipses"
+                  size={16}
+                  color={ArcTheme.colors.primary}
+                />
+              </TouchableOpacity>
+            )}
+
+            {/* Refresh/Loading */}
+            <TouchableOpacity
+              style={styles.inputActionButton}
+              onPress={onRefresh}
+              activeOpacity={0.7}
+            >
+              {isLoading ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary}
+                />
+              ) : (
+                <Ionicons
+                  name="refresh"
+                  size={18}
+                  color={isIncognito ? ArcTheme.colors.accent : themeColors.text.secondary}
+                />
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
 
-        {/* Action Buttons */}
+        {/* Arc-style action buttons */}
         <View style={styles.actionButtons}>
-          {/* Tools Menu Button */}
+          {/* Tools menu button */}
           {onShowToolsMenu && (
             <TouchableOpacity
-              style={[styles.actionButton, isDark && styles.actionButtonDark]}
+              style={[
+                styles.actionButton,
+                {
+                  backgroundColor: themeColors.interactive.hover,
+                }
+              ]}
               onPress={onShowToolsMenu}
+              activeOpacity={0.7}
             >
-              <Text style={styles.actionButtonText}>🔧</Text>
+              <Ionicons
+                name="menu"
+                size={20}
+                color={themeColors.text.primary}
+              />
             </TouchableOpacity>
           )}
 
-          {/* Tab Manager Button */}
+          {/* Tab manager button */}
           {onShowTabManager && (
             <TouchableOpacity
               style={[
                 styles.tabManagerButton,
                 {
-                  backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+                  backgroundColor: themeColors.interactive.hover,
+                  borderColor: themeColors.border,
                   ...(isIncognito && {
-                    backgroundColor: isDark ? "#2A2A2A" : "#E8E8E8",
-                    borderColor: "#8E44AD",
+                    backgroundColor: ArcTheme.colors.accent + '20',
+                    borderColor: ArcTheme.colors.accent,
                     borderWidth: 1,
                   }),
                 },
               ]}
               onPress={onShowTabManager}
+              activeOpacity={0.7}
             >
               <Text
                 style={[
                   styles.tabCount,
                   {
                     color: isIncognito
-                      ? "#8E44AD"
-                      : isDark
-                        ? "#FFFFFF"
-                        : "#000000",
+                      ? ArcTheme.colors.accent
+                      : themeColors.text.primary,
                   },
                 ]}
               >
@@ -397,119 +444,68 @@ export default function AddressBar({
             </TouchableOpacity>
           )}
 
-          {/* History Button */}
-          {onShowHistory && !isIncognito && (
-            <TouchableOpacity
-              style={[styles.actionButton, isDark && styles.actionButtonDark]}
-              onPress={onShowHistory}
-            >
-              <Text style={styles.actionButtonText}>📚</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Bookmarks Button */}
-          {onShowBookmarks && (
-            <TouchableOpacity
-              style={[styles.actionButton, isDark && styles.actionButtonDark]}
-              onPress={onShowBookmarks}
-            >
-              <Text style={styles.actionButtonText}>⭐</Text>
-            </TouchableOpacity>
-          )}
-
-          {/* Downloads Button */}
-          {onShowDownloads && (
-            <TouchableOpacity
-              style={[styles.actionButton, isDark && styles.actionButtonDark]}
-              onPress={onShowDownloads}
-            >
-              <View style={styles.downloadButtonContainer}>
-                <Text style={styles.actionButtonText}>📥</Text>
-                {(downloadCount || 0) > 0 && (
-                  <View style={styles.downloadBadge}>
-                    <Text style={styles.downloadBadgeText}>
-                      {downloadCount || 0}
-                    </Text>
-                  </View>
-                )}
-              </View>
-            </TouchableOpacity>
-          )}
-
-          {/* AI Toggle Button */}
+          {/* AI toggle button */}
           <TouchableOpacity
             style={[
               styles.aiButton,
               {
-                backgroundColor: aiEnabled ? "#007AFF" : "transparent",
-                ...(isIncognito &&
-                  aiEnabled && {
-                    backgroundColor: "#8E44AD",
-                  }),
+                backgroundColor: aiEnabled
+                  ? (isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary)
+                  : 'transparent',
+                borderColor: aiEnabled
+                  ? 'transparent'
+                  : themeColors.border,
+                borderWidth: aiEnabled ? 0 : 1,
               },
             ]}
             onPress={onToggleAI}
+            activeOpacity={0.7}
           >
             <Ionicons
               name="sparkles"
-              size={20}
+              size={18}
               color={
                 aiEnabled
                   ? "#FFFFFF"
-                  : isIncognito
-                    ? "#8E44AD"
-                    : isDark
-                      ? "#8E8E93"
-                      : "#6B6B6B"
+                  : themeColors.text.secondary
               }
             />
           </TouchableOpacity>
-
-          {/* Home Button */}
-          {onHome && (
-            <TouchableOpacity onPress={onHome} style={styles.actionButton}>
-              <Ionicons
-                name="home-outline"
-                size={22}
-                color={isDark ? "#007AFF" : "#007AFF"}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Add to Home Button */}
-          {showAddToHome && onAddToHome && (
-            <TouchableOpacity onPress={onAddToHome} style={styles.actionButton}>
-              <Ionicons
-                name="add-circle-outline"
-                size={22}
-                color={isDark ? "#34C759" : "#34C759"}
-              />
-            </TouchableOpacity>
-          )}
         </View>
       </View>
 
-      {/* Progress Bar */}
+      {/* Arc-style progress bar */}
       {isLoading && progress > 0 && (
-        <View style={styles.progressContainer}>
+        <View
+          style={[
+            styles.progressContainer,
+            {
+              backgroundColor: themeColors.divider,
+            }
+          ]}
+        >
           <View
             style={[
               styles.progressBar,
               {
                 width: `${progress * 100}%`,
-                backgroundColor: isIncognito ? "#8E44AD" : "#007AFF",
+                backgroundColor: isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary,
               },
             ]}
           />
         </View>
       )}
 
-      {/* Suggestions List */}
+      {/* Arc-style suggestions */}
       {showSuggestions && suggestions.length > 0 && (
         <View
           style={[
             styles.suggestionsContainer,
-            { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
+            {
+              backgroundColor: themeColors.card,
+              borderColor: themeColors.border,
+              ...ArcTheme.shadows.lg,
+            },
           ]}
         >
           <FlatList
@@ -534,26 +530,31 @@ const styles = StyleSheet.create({
   addressBarContainer: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    paddingHorizontal: ArcTheme.spacing.base,
+    paddingVertical: ArcTheme.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E5EA",
   },
   navigationControls: {
     flexDirection: "row",
-    marginRight: 8,
+    marginRight: ArcTheme.spacing.sm,
+    gap: ArcTheme.spacing.xs / 2,
   },
   navButton: {
-    padding: 4,
-    marginRight: 4,
+    width: 32,
+    height: 32,
+    borderRadius: ArcTheme.borderRadius.base,
+    justifyContent: "center",
+    alignItems: "center",
   },
   inputContainer: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    borderRadius: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    borderRadius: ArcTheme.borderRadius.base,
+    borderWidth: 1,
+    paddingHorizontal: ArcTheme.spacing.sm,
+    paddingVertical: Platform.OS === 'ios' ? ArcTheme.spacing.sm : ArcTheme.spacing.xs,
+    marginHorizontal: ArcTheme.spacing.xs,
   },
   securityIcon: {
     width: 20,
@@ -562,89 +563,61 @@ const styles = StyleSheet.create({
   },
   textInput: {
     flex: 1,
-    fontSize: 16,
-    marginLeft: 8,
-    paddingVertical: 4,
+    fontSize: ArcTheme.typography.fontSize.base,
+    fontWeight: ArcTheme.typography.fontWeight.normal,
+    marginLeft: ArcTheme.spacing.xs,
+    paddingVertical: ArcTheme.spacing.xs / 2,
   },
-  actionButton: {
-    padding: 8,
-    marginLeft: 4,
-    borderRadius: 20,
-    minWidth: 40,
+  inputActions: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: ArcTheme.spacing.xs,
   },
-  actionButtonDark: {
-    backgroundColor: '#2C2C2E',
+  inputActionButton: {
+    padding: ArcTheme.spacing.xs,
+    borderRadius: ArcTheme.borderRadius.sm,
   },
-  actionButtonText: {
-    fontSize: 18,
-    color: '#666',
+  quickAIButton: {
+    borderWidth: 1,
+    paddingHorizontal: ArcTheme.spacing.xs,
   },
   actionButtons: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 8,
+    gap: ArcTheme.spacing.xs,
+  },
+  actionButton: {
+    width: 36,
+    height: 36,
+    borderRadius: ArcTheme.borderRadius.base,
+    justifyContent: "center",
+    alignItems: "center",
   },
   tabManagerButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 6,
+    width: 36,
+    height: 36,
+    borderRadius: ArcTheme.borderRadius.base,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 4,
+    borderWidth: 1,
   },
   tabCount: {
-    fontSize: 14,
-    fontWeight: "600",
-  },
-  roundActionButton: {
-    padding: 8,
-    marginLeft: 4,
-  },
-  downloadButton: {
-    padding: 8,
-    marginLeft: 4,
-    position: "relative",
-  },
-  downloadButtonContainer: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  downloadBadge: {
-    position: "absolute",
-    top: -2,
-    right: -2,
-    minWidth: 16,
-    height: 16,
-    borderRadius: 8,
-    backgroundColor: '#FF3B30',
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  downloadBadgeText: {
-    color: "#FFFFFF",
-    fontSize: 10,
-    fontWeight: "600",
-    paddingHorizontal: 4,
+    fontSize: ArcTheme.typography.fontSize.sm,
+    fontWeight: ArcTheme.typography.fontWeight.semibold,
   },
   aiButton: {
-    padding: 8,
-    borderRadius: 20,
-    marginLeft: 8,
-  },
-  quickAIChatButton: {
-    backgroundColor: "#F0F8FF",
-    borderRadius: 16,
-    paddingHorizontal: 2,
+    width: 36,
+    height: 36,
+    borderRadius: ArcTheme.borderRadius.base,
+    justifyContent: "center",
+    alignItems: "center",
   },
   progressContainer: {
     height: 2,
-    backgroundColor: "#E5E5EA",
   },
   progressBar: {
     height: "100%",
+    borderRadius: 1,
   },
   suggestionsContainer: {
     position: "absolute",
@@ -652,17 +625,11 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     maxHeight: 300,
-    borderRadius: 10,
-    marginHorizontal: 16,
-    marginTop: 4,
-    shadowColor: "#000",
-    shadowOffset: {
-      width: 0,
-      height: 2,
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
-    elevation: 5,
+    borderRadius: ArcTheme.borderRadius.lg,
+    borderWidth: 1,
+    marginHorizontal: ArcTheme.spacing.base,
+    marginTop: ArcTheme.spacing.xs / 2,
+    overflow: 'hidden',
   },
   suggestionsList: {
     maxHeight: 300,
@@ -670,23 +637,24 @@ const styles = StyleSheet.create({
   suggestionItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
+    paddingHorizontal: ArcTheme.spacing.base,
+    paddingVertical: ArcTheme.spacing.sm,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: "#E5E5EA",
   },
   suggestionIcon: {
-    marginRight: 12,
+    width: 32,
+    alignItems: "center",
+    marginRight: ArcTheme.spacing.sm,
   },
   suggestionContent: {
     flex: 1,
   },
   suggestionText: {
-    fontSize: 16,
-    fontWeight: "400",
+    fontSize: ArcTheme.typography.fontSize.base,
+    fontWeight: ArcTheme.typography.fontWeight.normal,
   },
   suggestionType: {
-    fontSize: 12,
+    fontSize: ArcTheme.typography.fontSize.xs,
     marginTop: 2,
     textTransform: "capitalize",
   },
