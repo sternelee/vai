@@ -1,6 +1,6 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { CoreMessage, generateText, streamText } from 'ai';
-import { mcpService } from './MCPService';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { CoreMessage, generateText, streamText } from "ai";
+import { mcpService } from "./MCPService";
 
 export interface AIResponse {
   content: string;
@@ -17,7 +17,7 @@ export interface WebPageSummary {
 
 export interface SearchSuggestion {
   query: string;
-  type: 'search' | 'url' | 'history' | 'bookmark';
+  type: "search" | "url" | "history" | "bookmark";
   confidence: number;
 }
 
@@ -48,7 +48,7 @@ export interface AIModel {
 export interface ConfigField {
   key: string;
   label: string;
-  type: 'text' | 'password' | 'select' | 'number';
+  type: "text" | "password" | "select" | "number";
   required: boolean;
   placeholder?: string;
   options?: { value: string; label: string }[];
@@ -68,249 +68,393 @@ class AIService {
   private config: AIConfig | null = null;
   private providers: AIProvider[] = [
     {
-      id: 'openai',
-      name: 'OpenAI',
-      icon: '🔥',
-      description: 'GPT-4o, GPT-4, o1 models',
+      id: "openai",
+      name: "OpenAI",
+      icon: "🔥",
+      description: "GPT-4o, GPT-4, o1 models",
       requiresApiKey: true,
       models: [
         {
-          id: 'gpt-4o',
-          name: 'GPT-4o',
-          description: 'Most capable multimodal model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "gpt-4o",
+          name: "GPT-4o",
+          description: "Most capable multimodal model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'gpt-4o-mini',
-          name: 'GPT-4o Mini',
-          description: 'Affordable and intelligent small model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "gpt-4o-mini",
+          name: "GPT-4o Mini",
+          description: "Affordable and intelligent small model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'gpt-4-turbo',
-          name: 'GPT-4 Turbo',
-          description: 'Latest GPT-4 model with vision',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "gpt-4-turbo",
+          name: "GPT-4 Turbo",
+          description: "Latest GPT-4 model with vision",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'o1',
-          name: 'o1',
-          description: 'Advanced reasoning model',
-          capabilities: { objectGeneration: true }
+          id: "o1",
+          name: "o1",
+          description: "Advanced reasoning model",
+          capabilities: { objectGeneration: true },
         },
         {
-          id: 'o1-mini',
-          name: 'o1 Mini',
-          description: 'Fast reasoning model',
-          capabilities: { objectGeneration: true }
-        }
+          id: "o1-mini",
+          name: "o1 Mini",
+          description: "Fast reasoning model",
+          capabilities: { objectGeneration: true },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'sk-...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "sk-...",
+        },
+      ],
     },
     {
-      id: 'anthropic',
-      name: 'Anthropic',
-      icon: '🎭',
-      description: 'Claude 3.5 Sonnet, Haiku models',
+      id: "anthropic",
+      name: "Anthropic",
+      icon: "🎭",
+      description: "Claude 3.5 Sonnet, Haiku models",
       requiresApiKey: true,
       models: [
         {
-          id: 'claude-3-5-sonnet-20241022',
-          name: 'Claude 3.5 Sonnet',
-          description: 'Most intelligent model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "claude-3-5-sonnet-20241022",
+          name: "Claude 3.5 Sonnet",
+          description: "Most intelligent model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'claude-3-5-haiku-20241022',
-          name: 'Claude 3.5 Haiku',
-          description: 'Fast and lightweight',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "claude-3-5-haiku-20241022",
+          name: "Claude 3.5 Haiku",
+          description: "Fast and lightweight",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'sk-ant-...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "sk-ant-...",
+        },
+      ],
     },
     {
-      id: 'google',
-      name: 'Google Generative AI',
-      icon: '🌟',
-      description: 'Gemini 2.0 Flash, Gemini 1.5 models',
+      id: "google",
+      name: "Google Generative AI",
+      icon: "🌟",
+      description: "Gemini 2.0 Flash, Gemini 1.5 models",
       requiresApiKey: true,
       models: [
         {
-          id: 'gemini-2.0-flash-exp',
-          name: 'Gemini 2.0 Flash',
-          description: 'Latest multimodal model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "gemini-2.0-flash-exp",
+          name: "Gemini 2.0 Flash",
+          description: "Latest multimodal model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'gemini-1.5-pro',
-          name: 'Gemini 1.5 Pro',
-          description: 'Advanced reasoning model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "gemini-1.5-pro",
+          name: "Gemini 1.5 Pro",
+          description: "Advanced reasoning model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'gemini-1.5-flash',
-          name: 'Gemini 1.5 Flash',
-          description: 'Fast and efficient',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "gemini-1.5-flash",
+          name: "Gemini 1.5 Flash",
+          description: "Fast and efficient",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'AIza...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "AIza...",
+        },
+      ],
     },
     {
-      id: 'groq',
-      name: 'Groq',
-      icon: '⚡',
-      description: 'Ultra-fast LLaMA, Mixtral models',
+      id: "groq",
+      name: "Groq",
+      icon: "⚡",
+      description: "Ultra-fast LLaMA, Mixtral models",
       requiresApiKey: true,
       models: [
         {
-          id: 'llama-3.3-70b-versatile',
-          name: 'LLaMA 3.3 70B',
-          description: 'Versatile large model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "llama-3.3-70b-versatile",
+          name: "LLaMA 3.3 70B",
+          description: "Versatile large model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'llama-3.1-8b-instant',
-          name: 'LLaMA 3.1 8B',
-          description: 'Fast and lightweight',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "llama-3.1-8b-instant",
+          name: "LLaMA 3.1 8B",
+          description: "Fast and lightweight",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'mixtral-8x7b-32768',
-          name: 'Mixtral 8x7B',
-          description: 'Mixture of experts model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "mixtral-8x7b-32768",
+          name: "Mixtral 8x7B",
+          description: "Mixture of experts model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'gsk_...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "gsk_...",
+        },
+      ],
     },
     {
-      id: 'deepseek',
-      name: 'DeepSeek',
-      icon: '🔍',
-      description: 'DeepSeek Chat, Reasoner models',
+      id: "deepseek",
+      name: "DeepSeek",
+      icon: "🔍",
+      description: "DeepSeek Chat, Reasoner models",
       requiresApiKey: true,
       models: [
         {
-          id: 'deepseek-chat',
-          name: 'DeepSeek Chat',
-          description: 'General purpose chat model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "deepseek-chat",
+          name: "DeepSeek Chat",
+          description: "General purpose chat model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'deepseek-reasoner',
-          name: 'DeepSeek Reasoner',
-          description: 'Advanced reasoning model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "deepseek-reasoner",
+          name: "DeepSeek Reasoner",
+          description: "Advanced reasoning model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'sk-...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "sk-...",
+        },
+      ],
     },
     {
-      id: 'mistral',
-      name: 'Mistral AI',
-      icon: '🌪️',
-      description: 'Mistral Large, Small models',
+      id: "mistral",
+      name: "Mistral AI",
+      icon: "🌪️",
+      description: "Mistral Large, Small models",
       requiresApiKey: true,
       models: [
         {
-          id: 'mistral-large-latest',
-          name: 'Mistral Large',
-          description: 'Most capable model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "mistral-large-latest",
+          name: "Mistral Large",
+          description: "Most capable model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'mistral-small-latest',
-          name: 'Mistral Small',
-          description: 'Fast and efficient',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "mistral-small-latest",
+          name: "Mistral Small",
+          description: "Fast and efficient",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'pixtral-large-latest',
-          name: 'Pixtral Large',
-          description: 'Multimodal model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "pixtral-large-latest",
+          name: "Pixtral Large",
+          description: "Multimodal model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'api-key-...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "api-key-...",
+        },
+      ],
     },
     {
-      id: 'xai',
-      name: 'xAI Grok',
-      icon: '🚀',
-      description: 'Grok 3, Grok 2 models',
+      id: "xai",
+      name: "xAI Grok",
+      icon: "🚀",
+      description: "Grok 3, Grok 2 models",
       requiresApiKey: true,
       models: [
         {
-          id: 'grok-3',
-          name: 'Grok 3',
-          description: 'Latest Grok model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "grok-3",
+          name: "Grok 3",
+          description: "Latest Grok model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'grok-3-mini',
-          name: 'Grok 3 Mini',
-          description: 'Lightweight version',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "grok-3-mini",
+          name: "Grok 3 Mini",
+          description: "Lightweight version",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'grok-2-vision-1212',
-          name: 'Grok 2 Vision',
-          description: 'Vision-enabled model',
-          capabilities: { imageInput: true, objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "grok-2-vision-1212",
+          name: "Grok 2 Vision",
+          description: "Vision-enabled model",
+          capabilities: {
+            imageInput: true,
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'xai-...' }
-      ]
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "xai-...",
+        },
+      ],
     },
     {
-      id: 'cerebras',
-      name: 'Cerebras',
-      icon: '🧠',
-      description: 'Ultra-fast LLaMA models',
+      id: "cerebras",
+      name: "Cerebras",
+      icon: "🧠",
+      description: "Ultra-fast LLaMA models",
       requiresApiKey: true,
       models: [
         {
-          id: 'llama3.3-70b',
-          name: 'LLaMA 3.3 70B',
-          description: 'Large context model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
+          id: "llama3.3-70b",
+          name: "LLaMA 3.3 70B",
+          description: "Large context model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
         },
         {
-          id: 'llama3.1-8b',
-          name: 'LLaMA 3.1 8B',
-          description: 'Fast inference model',
-          capabilities: { objectGeneration: true, toolUsage: true, toolStreaming: true }
-        }
+          id: "llama3.1-8b",
+          name: "LLaMA 3.1 8B",
+          description: "Fast inference model",
+          capabilities: {
+            objectGeneration: true,
+            toolUsage: true,
+            toolStreaming: true,
+          },
+        },
       ],
       configFields: [
-        { key: 'apiKey', label: 'API Key', type: 'password', required: true, placeholder: 'csk-...' }
-      ]
-    }
+        {
+          key: "apiKey",
+          label: "API Key",
+          type: "password",
+          required: true,
+          placeholder: "csk-...",
+        },
+      ],
+    },
   ];
 
   async initialize(): Promise<void> {
     try {
-      const savedConfig = await AsyncStorage.getItem('@ai_config');
+      const savedConfig = await AsyncStorage.getItem("@ai_config");
       if (savedConfig) {
         this.config = JSON.parse(savedConfig);
       }
     } catch (error) {
-      console.error('Failed to load AI config:', error);
+      console.error("Failed to load AI config:", error);
     }
   }
 
@@ -321,7 +465,7 @@ class AIService {
 
   // Get specific provider
   getProvider(id: string): AIProvider | undefined {
-    return this.providers.find(p => p.id === id);
+    return this.providers.find((p) => p.id === id);
   }
 
   // Get current configuration
@@ -338,9 +482,9 @@ class AIService {
   async saveConfig(config: AIConfig): Promise<void> {
     try {
       this.config = config;
-      await AsyncStorage.setItem('@ai_config', JSON.stringify(config));
+      await AsyncStorage.setItem("@ai_config", JSON.stringify(config));
     } catch (error) {
-      console.error('Failed to save AI config:', error);
+      console.error("Failed to save AI config:", error);
       throw error;
     }
   }
@@ -349,9 +493,9 @@ class AIService {
   async clearConfig(): Promise<void> {
     try {
       this.config = null;
-      await AsyncStorage.removeItem('@ai_config');
+      await AsyncStorage.removeItem("@ai_config");
     } catch (error) {
-      console.error('Failed to clear AI config:', error);
+      console.error("Failed to clear AI config:", error);
       throw error;
     }
   }
@@ -359,72 +503,72 @@ class AIService {
   // Get AI provider instance based on current config
   private getProviderInstance() {
     if (!this.config) {
-      throw new Error('AI not configured');
+      throw new Error("AI not configured");
     }
 
     const { provider, apiKey, baseURL, region, projectId } = this.config;
 
     switch (provider) {
-      case 'openai': {
-        const { openai } = require('@ai-sdk/openai');
+      case "openai": {
+        const { openai } = require("@ai-sdk/openai");
         return openai({
           apiKey: apiKey,
           baseURL: baseURL,
         });
       }
-      
-      case 'anthropic': {
-        const { anthropic } = require('@ai-sdk/anthropic');
+
+      case "anthropic": {
+        const { anthropic } = require("@ai-sdk/anthropic");
         return anthropic({
           apiKey: apiKey,
         });
       }
-      
-      case 'google': {
-        const { google } = require('@ai-sdk/google');
+
+      case "google": {
+        const { google } = require("@ai-sdk/google");
         return google({
           apiKey: apiKey,
         });
       }
-      
-      case 'groq': {
-        const { groq } = require('@ai-sdk/groq');
+
+      case "groq": {
+        const { groq } = require("@ai-sdk/groq");
         return groq({
           apiKey: apiKey,
         });
       }
-      
-      case 'deepseek': {
-        const { createOpenAI } = require('@ai-sdk/openai');
+
+      case "deepseek": {
+        const { createOpenAI } = require("@ai-sdk/openai");
         return createOpenAI({
-          baseURL: 'https://api.deepseek.com/v1',
+          baseURL: "https://api.deepseek.com/v1",
           apiKey: apiKey,
         });
       }
-      
-      case 'mistral': {
-        const { mistral } = require('@ai-sdk/mistral');
+
+      case "mistral": {
+        const { mistral } = require("@ai-sdk/mistral");
         return mistral({
           apiKey: apiKey,
         });
       }
-      
-      case 'xai': {
-        const { createOpenAI } = require('@ai-sdk/openai');
+
+      case "xai": {
+        const { createOpenAI } = require("@ai-sdk/openai");
         return createOpenAI({
-          baseURL: 'https://api.x.ai/v1',
+          baseURL: "https://api.x.ai/v1",
           apiKey: apiKey,
         });
       }
-      
-      case 'cerebras': {
-        const { createOpenAI } = require('@ai-sdk/openai');
+
+      case "cerebras": {
+        const { createOpenAI } = require("@ai-sdk/openai");
         return createOpenAI({
-          baseURL: 'https://api.cerebras.ai/v1',
+          baseURL: "https://api.cerebras.ai/v1",
           apiKey: apiKey,
         });
       }
-      
+
       default:
         throw new Error(`Unsupported provider: ${provider}`);
     }
@@ -433,7 +577,7 @@ class AIService {
   // Generate text using current provider with MCP tools support
   async generateText(prompt: string, context?: string): Promise<string> {
     if (!this.config) {
-      throw new Error('AI service not configured');
+      throw new Error("AI service not configured");
     }
 
     try {
@@ -441,17 +585,17 @@ class AIService {
       const model = provider(this.config.model);
 
       const messages: CoreMessage[] = [];
-      
+
       if (context) {
         messages.push({
-          role: 'system',
-          content: `Context: ${context}`
+          role: "system",
+          content: `Context: ${context}`,
         });
       }
-      
+
       messages.push({
-        role: 'user',
-        content: prompt
+        role: "user",
+        content: prompt,
       });
 
       // Get available MCP tools
@@ -468,7 +612,7 @@ class AIService {
 
       return result.text;
     } catch (error) {
-      console.error('AI generation error:', error);
+      console.error("AI generation error:", error);
       throw new Error(`AI generation failed: ${error}`);
     }
   }
@@ -477,10 +621,10 @@ class AIService {
   async streamResponse(
     message: string,
     context?: string,
-    conversationHistory: { role: 'user' | 'assistant'; content: string }[] = []
+    conversationHistory: { role: "user" | "assistant"; content: string }[] = []
   ): Promise<ReadableStream<string>> {
     if (!this.isConfigured() || !this.config) {
-      throw new Error('AI service not configured');
+      throw new Error("AI service not configured");
     }
 
     const messages: CoreMessage[] = [];
@@ -488,13 +632,13 @@ class AIService {
     // Add context if provided
     if (context) {
       messages.push({
-        role: 'system',
+        role: "system",
         content: `You are a helpful AI assistant for a web browser with access to external tools via MCP. Context: ${context}`,
       });
     }
 
     // Add conversation history
-    conversationHistory.forEach(msg => {
+    conversationHistory.forEach((msg) => {
       messages.push({
         role: msg.role,
         content: msg.content,
@@ -503,7 +647,7 @@ class AIService {
 
     // Add current message
     messages.push({
-      role: 'user',
+      role: "user",
       content: message,
     });
 
@@ -528,7 +672,10 @@ class AIService {
         streamConfig.maxSteps = 5;
         streamConfig.onStepFinish = async ({ toolCalls }: any) => {
           if (toolCalls && toolCalls.length > 0) {
-            console.log('MCP tools used:', toolCalls.map((tc: any) => tc.toolName));
+            console.log(
+              "MCP tools used:",
+              toolCalls.map((tc: any) => tc.toolName)
+            );
           }
         };
       }
@@ -548,7 +695,7 @@ class AIService {
         },
       });
     } catch (error) {
-      console.error('Streaming error:', error);
+      console.error("Streaming error:", error);
       throw new Error(`Streaming failed: ${error}`);
     }
   }
@@ -557,7 +704,7 @@ class AIService {
   async streamResponseWithMCP(
     message: string,
     context?: string,
-    conversationHistory: { role: 'user' | 'assistant'; content: string }[] = []
+    conversationHistory: { role: "user" | "assistant"; content: string }[] = []
   ): Promise<ReadableStream<string>> {
     // This method is identical to streamResponse but with explicit MCP emphasis
     return this.streamResponse(message, context, conversationHistory);
@@ -574,7 +721,7 @@ class AIService {
       const tools = await mcpService.getAvailableTools();
       return Object.keys(tools).length > 0;
     } catch (error) {
-      console.error('Failed to check MCP tools:', error);
+      console.error("Failed to check MCP tools:", error);
       return false;
     }
   }
@@ -583,12 +730,12 @@ class AIService {
   async getMCPToolsSummary(): Promise<string[]> {
     try {
       const tools = await mcpService.getAvailableTools();
-      return Object.keys(tools).map(toolName => {
-        const [serverId, name] = toolName.split(':');
+      return Object.keys(tools).map((toolName) => {
+        const [serverId, name] = toolName.split(":");
         return `${name} (from ${serverId})`;
       });
     } catch (error) {
-      console.error('Failed to get MCP tools summary:', error);
+      console.error("Failed to get MCP tools summary:", error);
       return [];
     }
   }
@@ -596,7 +743,7 @@ class AIService {
   // Stream text generation
   async *streamText(prompt: string, context?: string): AsyncIterable<string> {
     if (!this.config) {
-      throw new Error('AI service not configured');
+      throw new Error("AI service not configured");
     }
 
     try {
@@ -604,17 +751,17 @@ class AIService {
       const model = provider(this.config.model);
 
       const messages: CoreMessage[] = [];
-      
+
       if (context) {
         messages.push({
-          role: 'system',
-          content: `Context: ${context}`
+          role: "system",
+          content: `Context: ${context}`,
         });
       }
-      
+
       messages.push({
-        role: 'user',
-        content: prompt
+        role: "user",
+        content: prompt,
       });
 
       const result = await streamText({
@@ -628,7 +775,7 @@ class AIService {
         yield delta;
       }
     } catch (error) {
-      console.error('AI streaming error:', error);
+      console.error("AI streaming error:", error);
       throw new Error(`AI streaming failed: ${error}`);
     }
   }
@@ -638,13 +785,13 @@ class AIService {
     try {
       const tempConfig = this.config;
       this.config = config;
-      
-      const result = await this.generateText('Hello');
-      
+
+      const result = await this.generateText("Hello");
+
       this.config = tempConfig;
       return result.length > 0;
     } catch (error) {
-      console.error('Provider test failed:', error);
+      console.error("Provider test failed:", error);
       return false;
     }
   }
@@ -669,9 +816,12 @@ class AIService {
   }
 
   // Summarize web page content
-  async summarizeWebPage(content: string, url: string): Promise<WebPageSummary> {
+  async summarizeWebPage(
+    content: string,
+    url: string
+  ): Promise<WebPageSummary> {
     if (!this.isConfigured() || !this.config) {
-      throw new Error('AI service not configured');
+      throw new Error("AI service not configured");
     }
 
     const prompt = `Summarize the following web page content from ${url}:
@@ -689,21 +839,21 @@ Please provide:
 
       const result = await generateText({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: "user", content: prompt }],
         maxTokens: 500,
         temperature: 0.3,
       });
 
       // Parse the response (simplified)
       return {
-        title: url.split('/')[2] || 'Web Page',
+        title: url.split("/")[2] || "Web Page",
         summary: result.text,
         keyPoints: [],
         relevanceScore: 8,
         readingTime: Math.ceil(content.length / 1000),
       };
     } catch (error) {
-      console.error('Summarization error:', error);
+      console.error("Summarization error:", error);
       throw new Error(`Failed to summarize content: ${error}`);
     }
   }
@@ -721,8 +871,8 @@ Please provide:
 
     const prompt = `Based on the search input "${input}" and user's browsing history, generate 5 smart search suggestions.
 
-History: ${historyItems.slice(0, 10).join(', ')}
-Bookmarks: ${bookmarks.slice(0, 5).join(', ')}
+History: ${historyItems.slice(0, 10).join(", ")}
+Bookmarks: ${bookmarks.slice(0, 5).join(", ")}
 
 Return JSON array of suggestions with title, url, and type.`;
 
@@ -732,7 +882,7 @@ Return JSON array of suggestions with title, url, and type.`;
 
       const result = await generateText({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: "user", content: prompt }],
         maxTokens: 300,
         temperature: 0.5,
       });
@@ -743,13 +893,13 @@ Return JSON array of suggestions with title, url, and type.`;
         return suggestions.map((s: any) => ({
           title: s.title,
           url: s.url,
-          type: s.type || 'suggestion',
+          type: s.type || "suggestion",
         }));
       } catch {
         return this.generateFallbackSuggestions(input, historyItems, bookmarks);
       }
     } catch (error) {
-      console.error('Search suggestion error:', error);
+      console.error("Search suggestion error:", error);
       return this.generateFallbackSuggestions(input, historyItems, bookmarks);
     }
   }
@@ -766,33 +916,33 @@ Return JSON array of suggestions with title, url, and type.`;
     if (this.isValidUrl(input)) {
       suggestions.push({
         query: input,
-        type: 'url',
+        type: "url",
         confidence: 0.9,
       });
     }
 
     // Search in history
     const historyMatches = historyItems
-      .filter(item => item.toLowerCase().includes(input.toLowerCase()))
+      .filter((item) => item.toLowerCase().includes(input.toLowerCase()))
       .slice(0, 3);
 
-    historyMatches.forEach(match => {
+    historyMatches.forEach((match) => {
       suggestions.push({
         query: match,
-        type: 'history',
+        type: "history",
         confidence: 0.7,
       });
     });
 
     // Search in bookmarks
     const bookmarkMatches = bookmarks
-      .filter(item => item.toLowerCase().includes(input.toLowerCase()))
+      .filter((item) => item.toLowerCase().includes(input.toLowerCase()))
       .slice(0, 2);
 
-    bookmarkMatches.forEach(match => {
+    bookmarkMatches.forEach((match) => {
       suggestions.push({
         query: match,
-        type: 'bookmark',
+        type: "bookmark",
         confidence: 0.8,
       });
     });
@@ -801,7 +951,7 @@ Return JSON array of suggestions with title, url, and type.`;
     if (input.length > 2) {
       suggestions.push({
         query: `Search for "${input}"`,
-        type: 'search',
+        type: "search",
         confidence: 0.6,
       });
     }
@@ -810,9 +960,12 @@ Return JSON array of suggestions with title, url, and type.`;
   }
 
   // Translate text
-  async translateText(text: string, targetLanguage: string = 'en'): Promise<string> {
+  async translateText(
+    text: string,
+    targetLanguage: string = "en"
+  ): Promise<string> {
     if (!this.isConfigured() || !this.config) {
-      throw new Error('AI service not configured');
+      throw new Error("AI service not configured");
     }
 
     const prompt = `Translate the following text to ${targetLanguage}:
@@ -827,14 +980,14 @@ Provide only the translation, no explanations.`;
 
       const result = await generateText({
         model,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: "user", content: prompt }],
         maxTokens: 1000,
         temperature: 0.3,
       });
 
       return result.text.trim();
     } catch (error) {
-      console.error('Translation error:', error);
+      console.error("Translation error:", error);
       throw new Error(`Translation failed: ${error}`);
     }
   }
@@ -846,22 +999,24 @@ Provide only the translation, no explanations.`;
       return true;
     } catch (_) {
       // Check if it could be a domain without protocol
-      return /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/.test(string);
+      return /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/.test(
+        string
+      );
     }
   }
 
   // Format URL - add protocol if missing
   formatUrl(input: string): string {
     if (this.isValidUrl(input)) {
-      if (input.includes('://')) {
+      if (input.includes("://")) {
         return input;
       }
       return `https://${input}`;
     }
-    
+
     // If not a URL, create a search query
     return `https://www.google.com/search?q=${encodeURIComponent(input)}`;
   }
 }
 
-export const aiService = new AIService(); 
+export const aiService = new AIService();

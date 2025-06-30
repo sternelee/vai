@@ -1,7 +1,7 @@
 import { useColorScheme } from "@/hooks/useColorScheme";
-import { WebView } from "@metamask/react-native-webview";
 import React, { useEffect, useRef, useState } from "react";
 import { Alert, StyleSheet, View } from "react-native";
+import { WebView } from "react-native-webview";
 import { performanceService } from "../../services/PerformanceService";
 import { resourceSnifferService } from "../../services/ResourceSnifferService";
 import { userScriptService } from "../../services/UserScriptService";

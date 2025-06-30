@@ -46,6 +46,9 @@ interface AddressBarProps {
   onQuickAIChat?: () => void;
   aiConfigured?: boolean;
   onShowResourceSniffer?: () => void;
+  onHome?: () => void;
+  onAddToHome?: () => void;
+  showAddToHome?: boolean;
 }
 
 export default function AddressBar({
@@ -75,6 +78,9 @@ export default function AddressBar({
   onQuickAIChat,
   aiConfigured = false,
   onShowResourceSniffer,
+  onHome,
+  onAddToHome,
+  showAddToHome,
 }: AddressBarProps) {
   const [inputValue, setInputValue] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -429,6 +435,51 @@ export default function AddressBar({
               <Text style={styles.actionButtonText}>🕵️</Text>
             </TouchableOpacity>
           )}
+
+          {/* Home Button */}
+          {onHome && (
+            <TouchableOpacity onPress={onHome} style={styles.actionButton}>
+              <Ionicons name="home-outline" size={22} color={isDark ? '#007AFF' : '#007AFF'} />
+            </TouchableOpacity>
+          )}
+
+          {/* Add to Home Button */}
+          {showAddToHome && onAddToHome && (
+            <TouchableOpacity onPress={onAddToHome} style={styles.actionButton}>
+              <Ionicons name="add-circle-outline" size={22} color={isDark ? '#34C759' : '#34C759'} />
+            </TouchableOpacity>
+          )}
+
+          {/* Quick AI Chat */}
+          {aiConfigured && (
+            <TouchableOpacity onPress={onQuickAIChat} style={styles.actionButton}>
+              <Ionicons name="sparkles" size={22} color={isDark ? '#007AFF' : '#007AFF'} />
+            </TouchableOpacity>
+          )}
+
+          {/* Resource Sniffer */}
+          <TouchableOpacity onPress={onShowResourceSniffer} style={styles.actionButton}>
+            <Ionicons name="search-outline" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+          </TouchableOpacity>
+
+          {/* Bookmark */}
+          <TouchableOpacity onPress={onToggleBookmark} style={styles.actionButton}>
+            <Ionicons 
+              name={isBookmarked ? 'bookmark' : 'bookmark-outline'} 
+              size={22} 
+              color={isBookmarked ? '#FF9500' : (isDark ? '#8E8E93' : '#6B6B6B')} 
+            />
+          </TouchableOpacity>
+
+          {/* Share */}
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="share-outline" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+          </TouchableOpacity>
+
+          {/* More Options */}
+          <TouchableOpacity style={styles.actionButton}>
+            <Ionicons name="ellipsis-horizontal" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+          </TouchableOpacity>
         </View>
       </View>
 

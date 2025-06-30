@@ -1,7 +1,7 @@
 interface ResourceItem {
   id: string;
   url: string;
-  type: 'image' | 'video' | 'audio' | 'document' | 'script' | 'style' | 'other';
+  type: "image" | "video" | "audio" | "document" | "script" | "style" | "other";
   name: string;
   size?: string;
   extension?: string;
@@ -278,19 +278,31 @@ class ResourceSnifferService {
 
   // 生成唯一ID
   private generateId(): string {
-    return 'resource_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    return (
+      "resource_" + Date.now() + "_" + Math.random().toString(36).substr(2, 9)
+    );
   }
 
   // 验证资源类型
-  private validateResourceType(type: string): ResourceItem['type'] {
-    const validTypes: ResourceItem['type'][] = ['image', 'video', 'audio', 'document', 'script', 'style', 'other'];
-    return validTypes.includes(type as ResourceItem['type']) ? type as ResourceItem['type'] : 'other';
+  private validateResourceType(type: string): ResourceItem["type"] {
+    const validTypes: ResourceItem["type"][] = [
+      "image",
+      "video",
+      "audio",
+      "document",
+      "script",
+      "style",
+      "other",
+    ];
+    return validTypes.includes(type as ResourceItem["type"])
+      ? (type as ResourceItem["type"])
+      : "other";
   }
 
   // 清理资源名称
   private sanitizeResourceName(name: string): string {
-    if (!name || name.trim() === '') {
-      return 'Unknown Resource';
+    if (!name || name.trim() === "") {
+      return "Unknown Resource";
     }
     return name.trim().substring(0, 100); // 限制长度
   }
@@ -299,35 +311,35 @@ class ResourceSnifferService {
   private estimateFileSize(resource: ResourceItem): string {
     // 根据资源类型和扩展名估算大小
     const estimates: { [key: string]: string } = {
-      image: '~500KB',
-      video: '~5MB',
-      audio: '~3MB',
-      document: '~1MB',
-      script: '~100KB',
-      style: '~50KB',
-      other: '~unknown',
+      image: "~500KB",
+      video: "~5MB",
+      audio: "~3MB",
+      document: "~1MB",
+      script: "~100KB",
+      style: "~50KB",
+      other: "~unknown",
     };
 
-    return estimates[resource.type] || '~unknown';
+    return estimates[resource.type] || "~unknown";
   }
 
   // 根据URL判断是否为有效的可下载资源
   public isDownloadableResource(url: string): boolean {
     try {
       const urlObj = new URL(url);
-      
+
       // 排除一些不适合下载的协议
-      if (!['http:', 'https:'].includes(urlObj.protocol)) {
+      if (!["http:", "https:"].includes(urlObj.protocol)) {
         return false;
       }
-      
+
       // 排除过大的文件（通过扩展名简单判断）
-      const largeFileExts = ['iso', 'dmg', 'exe', 'msi', 'deb', 'rpm'];
+      const largeFileExts = ["iso", "dmg", "exe", "msi", "deb", "rpm"];
       const extension = this.getFileExtension(url);
       if (largeFileExts.includes(extension)) {
         return false;
       }
-      
+
       return true;
     } catch {
       return false;
@@ -339,9 +351,9 @@ class ResourceSnifferService {
     try {
       const pathname = new URL(url).pathname;
       const match = pathname.match(/\.([^.]+)$/);
-      return match ? match[1].toLowerCase() : '';
+      return match ? match[1].toLowerCase() : "";
     } catch {
-      return '';
+      return "";
     }
   }
 
@@ -350,27 +362,28 @@ class ResourceSnifferService {
     try {
       const url = new URL(resource.url);
       const pathname = url.pathname;
-      const segments = pathname.split('/');
+      const segments = pathname.split("/");
       const filename = segments[segments.length - 1];
-      
-      if (filename && filename.includes('.')) {
+
+      if (filename && filename.includes(".")) {
         return filename;
       }
-      
+
       // 如果没有文件名，根据类型生成
       const typeExtensions: { [key: string]: string } = {
-        image: 'jpg',
-        video: 'mp4',
-        audio: 'mp3',
-        document: 'pdf',
-        script: 'js',
-        style: 'css',
+        image: "jpg",
+        video: "mp4",
+        audio: "mp3",
+        document: "pdf",
+        script: "js",
+        style: "css",
       };
-      
-      const extension = typeExtensions[resource.type] || 'txt';
-      const baseName = resource.name.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 20);
+
+      const extension = typeExtensions[resource.type] || "txt";
+      const baseName = resource.name
+        .replace(/[^a-zA-Z0-9]/g, "_")
+        .substring(0, 20);
       return `${baseName}.${extension}`;
-      
     } catch {
       return `resource_${Date.now()}.txt`;
     }

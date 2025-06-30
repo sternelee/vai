@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "VaiBrowser",
-    "slug": "vai-browser",
+    "slug": "vai",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -44,8 +44,7 @@
         }
       ],
       "expo-sqlite",
-      "expo-secure-store",
-      "@metamask/react-native-webview"
+      "expo-secure-store"
     ],
     "experiments": {
       "typedRoutes": true

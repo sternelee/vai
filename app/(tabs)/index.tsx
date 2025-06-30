@@ -1,8 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useEffect, useState } from 'react';
-import { Alert, SafeAreaView, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Alert, SafeAreaView, Share, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Modal from 'react-native-modal';
-import { v4 as uuidv4 } from 'uuid';
 
 // Components
 import AddressBar from '@/components/browser/AddressBar';
@@ -11,6 +10,7 @@ import BookmarkManager from '@/components/browser/BookmarkManager';
 import BrowserWebView from '@/components/browser/BrowserWebView';
 import DownloadManager from '@/components/browser/DownloadManager';
 import HistoryManager from '@/components/browser/HistoryManager';
+import HomePage from '@/components/browser/HomePage';
 import ResourceSniffer from '@/components/browser/ResourceSniffer';
 import TabBar from '@/components/browser/TabBar';
 import TabManager from '@/components/browser/TabManager';
@@ -20,6 +20,7 @@ import UserScriptManager from '@/components/browser/UserScriptManager';
 import { aiService } from '@/services/AIService';
 import { databaseService } from '@/services/DatabaseService';
 import { downloadService } from '@/services/DownloadService';
+import { homePageService } from '@/services/HomePageService';
 import { mcpService } from '@/services/MCPService';
 import { performanceService } from '@/services/PerformanceService';
 import { resourceSnifferService } from '@/services/ResourceSnifferService';
@@ -76,6 +77,12 @@ interface ResourceItem {
   createdAt: string;
 }
 
+interface HomePageShortcut {
+  id: string;
+  title: string;
+  url: string;
+}
+
 export default function BrowserScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -83,7 +90,7 @@ export default function BrowserScreen() {
   // State
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [navigationCommand, setNavigationCommand] = useState<{ type: 'refresh' | 'back' | 'forward' } | null>(null);
+  const [navigationCommand, setNavigationCommand] = useState<'refresh' | 'back' | 'forward' | null>(null);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [aiChatVisible, setAiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
@@ -110,6 +117,10 @@ export default function BrowserScreen() {
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
   const [pageResources, setPageResources] = useState<ResourceItem[]>([]);
 
+  // Homepage states
+  const [homePageShortcuts, setHomePageShortcuts] = useState<HomePageShortcut[]>([]);
+  const [homePageUrl, setHomePageUrl] = useState<string>('vai://home');
+
   // Get current active tab
   const currentTab = tabs.find(tab => tab.id === activeTabId);
 
@@ -118,14 +129,17 @@ export default function BrowserScreen() {
       try {
         // Initialize all services
         await initializeServices();
-        
+
         // Load browsing data
         await loadBrowsingData();
-        
+
+        // Load homepage settings
+        await loadHomePageSettings();
+
         // Check AI configuration
         const aiStatus = aiService.getProviderStatus();
         setAiConfigured(aiStatus.configured && aiStatus.ready);
-        
+
         // Create initial tab if none exist
         const savedTabs = await AsyncStorage.getItem('browser_tabs');
         if (savedTabs) {
@@ -136,15 +150,15 @@ export default function BrowserScreen() {
             return;
           }
         }
-        
+
         // Create default tab
         const newTab = createNewTab();
         setTabs([newTab]);
         setActiveTabId(newTab.id);
-        
+
       } catch (error) {
         console.error('Failed to load browser data:', error);
-        
+
         // Create fallback tab
         const fallbackTab = createNewTab();
         setTabs([fallbackTab]);
@@ -161,10 +175,10 @@ export default function BrowserScreen() {
       await databaseService.initialize();
       await userScriptService.initialize();
       await mcpService.initialize();
-      
+
       // Performance monitoring
       performanceService.startMonitoring();
-      
+
       console.log('Services initialized successfully');
     } catch (error) {
       console.error('Failed to initialize services:', error);
@@ -176,17 +190,28 @@ export default function BrowserScreen() {
       // Load AI configuration
       const aiStatus = aiService.getProviderStatus();
       setAiConfigured(aiStatus.configured && aiStatus.ready);
-      
+
       // Load history
       const historyData = await databaseService.getHistory(50);
       setHistory(historyData);
-      
+
       // Load bookmarks
       const bookmarkData = await databaseService.getBookmarks();
       setBookmarks(bookmarkData);
-      
+
     } catch (error) {
       console.error('Failed to load browsing data:', error);
+    }
+  };
+
+  const loadHomePageSettings = async () => {
+    try {
+      const shortcuts = await homePageService.getShortcuts();
+      const homeUrl = await homePageService.getHomePageUrl();
+      setHomePageShortcuts(shortcuts);
+      setHomePageUrl(homeUrl);
+    } catch (error) {
+      console.error('Failed to load homepage settings:', error);
     }
   };
 
@@ -202,11 +227,11 @@ export default function BrowserScreen() {
 
   const saveToHistory = async (url: string, title: string) => {
     if (!url || url === 'about:blank') return;
-    
+
     // Skip for incognito tabs
     const currentTab = tabs.find(tab => tab.id === activeTabId);
     if (currentTab?.isIncognito) return;
-    
+
     try {
       await databaseService.addHistoryItem({
         url,
@@ -214,7 +239,7 @@ export default function BrowserScreen() {
         visitedAt: new Date().toISOString(),
         favicon: currentTab?.favicon || '',
       });
-      
+
       // Update history state
       const historyData = await databaseService.getHistory(50);
       setHistory(historyData);
@@ -224,23 +249,25 @@ export default function BrowserScreen() {
   };
 
   // Tab management functions
-  const createNewTab = (isIncognito: boolean = false): Tab => {
+  const createNewTab = (url?: string, isIncognito?: boolean): Tab => {
+    const id = Date.now().toString();
+    const tabUrl = url || homePageUrl;
+    const isHomePage = homePageService.isCustomHomePage(tabUrl);
+    
     return {
-      id: uuidv4(),
-      url: 'https://www.google.com',
-      title: 'New Tab',
+      id,
+      url: tabUrl,
+      title: isHomePage ? 'VaiBrowser 主页' : '新标签页',
+      isLoading: false,
       canGoBack: false,
       canGoForward: false,
-      isLoading: false,
       progress: 0,
-      isActive: false,
-      isIncognito,
-      lastVisited: new Date().toISOString(),
+      isIncognito: isIncognito || false,
     };
   };
 
   const handleNewTab = (isIncognito: boolean = false) => {
-    const newTab = createNewTab(isIncognito);
+    const newTab = createNewTab(undefined, isIncognito);
     
     setTabs(prevTabs => [
       ...prevTabs.map(tab => ({ ...tab, isActive: false })),
@@ -271,24 +298,24 @@ export default function BrowserScreen() {
 
     const tabIndex = tabs.findIndex(tab => tab.id === tabId);
     const isActiveTab = tabId === activeTabId;
-    
+
     setTabs(prevTabs => {
       const newTabs = prevTabs.filter(tab => tab.id !== tabId);
-      
+
       // If we closed the active tab, select another one
       if (isActiveTab && newTabs.length > 0) {
         const newActiveIndex = Math.min(tabIndex, newTabs.length - 1);
         newTabs[newActiveIndex].isActive = true;
         setActiveTabId(newTabs[newActiveIndex].id);
       }
-      
+
       return newTabs;
     });
   };
 
   const handleCloseAllTabs = () => {
     // Create a new regular tab
-    const newTab = createNewTab(false);
+    const newTab = createNewTab(undefined, false);
     setTabs([{ ...newTab, isActive: true }]);
     setActiveTabId(newTab.id);
     setTabManagerVisible(false);
@@ -307,12 +334,12 @@ export default function BrowserScreen() {
     if (!currentTab) return;
 
     const url = formatUrl(input);
-    updateTab(currentTab.id, { 
-      url, 
-      isLoading: true, 
-      progress: 0 
+    updateTab(currentTab.id, {
+      url,
+      isLoading: true,
+      progress: 0
     });
-    
+
     // Save to history (unless incognito)
     if (!currentTab.isIncognito) {
       saveToHistory(url, input);
@@ -323,11 +350,11 @@ export default function BrowserScreen() {
     if (input.includes('://')) {
       return input;
     }
-    
+
     if (input.includes('.') && !input.includes(' ')) {
       return `https://${input}`;
     }
-    
+
     return `https://www.google.com/search?q=${encodeURIComponent(input)}`;
   };
 
@@ -344,8 +371,8 @@ export default function BrowserScreen() {
       if (aiConfigured) {
         try {
           suggestions = await aiService.generateSearchSuggestions(
-            query, 
-            history, 
+            query,
+            history,
             bookmarks
           );
         } catch (error) {
@@ -357,7 +384,7 @@ export default function BrowserScreen() {
       if (suggestions.length === 0) {
         suggestions = generateFallbackSuggestions(query);
       }
-      
+
       setSearchSuggestions(suggestions);
     } catch (error) {
       console.error('Failed to get suggestions:', error);
@@ -418,7 +445,7 @@ export default function BrowserScreen() {
   };
 
   const handleRefresh = () => {
-    setNavigationCommand({ type: 'refresh' });
+    setNavigationCommand('refresh');
   };
 
   const handleGoBack = () => {
@@ -473,7 +500,7 @@ export default function BrowserScreen() {
   const handleError = (tabId: string, error: any) => {
     console.error('WebView error:', error);
     updateTab(tabId, { isLoading: false, progress: 0 });
-    
+
     Alert.alert(
       'Page Load Error',
       'Failed to load the page. Please check your internet connection and try again.',
@@ -486,17 +513,17 @@ export default function BrowserScreen() {
 
   const handleMessage = (tabId: string, message: any) => {
     console.log('WebView message:', message);
-    
+
     switch (message.type) {
       case 'ai_button_clicked':
         setCurrentPageContent(message.pageContent);
         setAiChatVisible(true);
         break;
-        
+
       case 'text_selected':
         setSelectedText(message.selectedText);
         break;
-        
+
       case 'page_content_extracted':
         setCurrentPageContent(message.content.text);
         break;
@@ -504,7 +531,7 @@ export default function BrowserScreen() {
       case 'download_requested':
         handleDownloadRequest(message.url, message.filename);
         break;
-        
+
       default:
         console.log('Unknown message type:', message.type);
     }
@@ -611,7 +638,7 @@ export default function BrowserScreen() {
   // 新增：快速AI Chat功能 - 自动获取当前页面上下文
   const handleQuickAIChat = () => {
     if (!currentTab) return;
-    
+
     // 设置页面上下文
     setAIContext({
       type: 'quick_chat',
@@ -619,10 +646,10 @@ export default function BrowserScreen() {
       url: currentTab.url,
       content: currentPageContent || ''
     });
-    
+
     // 打开AI Chat面板
     setAiChatVisible(true);
-    
+
     // 如果当前页面内容为空，尝试从WebView获取
     if (!currentPageContent) {
       // 通过WebView注入的脚本自动获取页面内容
@@ -647,9 +674,8 @@ export default function BrowserScreen() {
       }
 
       // Get AI response using the real AI service
-      const responseStream = await aiService.chatAboutContent(
-        message, 
-        context, 
+      const responseStream = await aiService.chat(
+        `Context: ${context}\n\nUser: ${message}`,
         aiMessages.map(msg => ({
           role: msg.role,
           content: msg.content
@@ -665,7 +691,7 @@ export default function BrowserScreen() {
         timestamp: Date.now(),
         isStreaming: true,
       };
-      
+
       setAiMessages(prev => [...prev, assistantMessage]);
 
       // Handle the streaming response
@@ -678,11 +704,11 @@ export default function BrowserScreen() {
           if (done) break;
 
           accumulatedContent += value;
-          
+
           // Update the streaming message
-          setAiMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessageId 
+          setAiMessages(prev =>
+            prev.map(msg =>
+              msg.id === assistantMessageId
                 ? { ...msg, content: accumulatedContent }
                 : msg
             )
@@ -690,9 +716,9 @@ export default function BrowserScreen() {
         }
 
         // Mark as complete
-        setAiMessages(prev => 
-          prev.map(msg => 
-            msg.id === assistantMessageId 
+        setAiMessages(prev =>
+          prev.map(msg =>
+            msg.id === assistantMessageId
               ? { ...msg, isStreaming: false }
               : msg
           )
@@ -703,22 +729,22 @@ export default function BrowserScreen() {
       }
 
       return responseStream;
-      
+
     } catch (error) {
       console.error('AI chat error:', error);
-      
+
       // Remove user message and add error message
       setAiMessages(prev => prev.slice(0, -1));
-      
+
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: 'Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.',
         timestamp: Date.now(),
       };
-      
+
       setAiMessages(prev => [...prev, errorMessage]);
-      
+
       throw error;
     }
   };
@@ -733,10 +759,12 @@ export default function BrowserScreen() {
       'To use AI features, you need to configure an OpenAI API key in the Settings.',
       [
         { text: 'Cancel', style: 'cancel' },
-        { text: 'Go to Settings', onPress: () => {
-          // This would navigate to settings tab
-          console.log('Navigate to settings tab');
-        }},
+        {
+          text: 'Go to Settings', onPress: () => {
+            // This would navigate to settings tab
+            console.log('Navigate to settings tab');
+          }
+        },
       ]
     );
   };
@@ -809,13 +837,13 @@ export default function BrowserScreen() {
       const stats = performanceService.getPerformanceStats();
       setPerformanceStats(stats);
     }, 10000); // Update every 10 seconds
-    
+
     return () => clearInterval(interval);
   }, []);
 
   const handleWebViewMessage = async (tabId: string, message: any) => {
     console.log('WebView message:', message);
-    
+
     switch (message.type) {
       case 'ai_button_clicked':
         setAIContext({
@@ -826,7 +854,7 @@ export default function BrowserScreen() {
         });
         setShowAIChat(true);
         break;
-        
+
       case 'text_selected':
         setAIContext({
           type: 'selected_text',
@@ -834,7 +862,7 @@ export default function BrowserScreen() {
           url: message.pageUrl
         });
         break;
-        
+
       case 'page_content_extracted':
         console.log('Page content extracted:', message.content);
         break;
@@ -868,7 +896,7 @@ export default function BrowserScreen() {
       case 'ai_script_injected':
         console.log(`AI script injected in ${message.injectionTime}ms`);
         break;
-        
+
       default:
         console.log('Unknown message type:', message.type);
     }
@@ -882,6 +910,24 @@ export default function BrowserScreen() {
       console.log(`Extracted ${processedResources.length} resources from page`);
     } catch (error) {
       console.error('Failed to process extracted resources:', error);
+    }
+  };
+
+  // 处理资源嗅探
+  const handleResourceSniffed = (resource: any) => {
+    try {
+      // Add the sniffed resource to page resources
+      const resourceItem = {
+        id: Date.now().toString(),
+        url: resource.url,
+        type: resource.type || 'unknown',
+        size: resource.size || 0,
+        name: resource.name || resource.url.split('/').pop() || 'unknown',
+        createdAt: new Date().toISOString(),
+      };
+      setPageResources(prev => [...prev, resourceItem]);
+    } catch (error) {
+      console.error('Failed to handle sniffed resource:', error);
     }
   };
 
@@ -905,7 +951,7 @@ export default function BrowserScreen() {
 
       const filename = resourceSnifferService.getSuggestedFilename(resource);
       await handleDownloadRequest(resource.url, filename);
-      
+
       Alert.alert('开始下载', `正在下载: ${resource.name}`);
     } catch (error) {
       console.error('Failed to download resource:', error);
@@ -913,25 +959,127 @@ export default function BrowserScreen() {
     }
   };
 
+  // 主页快捷方式管理
+  const handleUpdateHomePageShortcuts = async (shortcuts: HomePageShortcut[]) => {
+    try {
+      await homePageService.updateShortcuts(shortcuts);
+      setHomePageShortcuts(shortcuts);
+    } catch (error) {
+      console.error('Failed to update homepage shortcuts:', error);
+      Alert.alert('错误', '更新主页快捷方式失败');
+    }
+  };
+
+  // 添加当前页面到主页
+  const handleAddCurrentPageToHome = async () => {
+    if (!currentTab) return;
+
+    try {
+      const favicon = homePageService.generateFaviconUrl(currentTab.url);
+      await homePageService.addShortcut({
+        title: currentTab.title,
+        url: currentTab.url,
+        favicon,
+      });
+
+      // 重新加载快捷方式
+      await loadHomePageSettings();
+      Alert.alert('添加成功', `"${currentTab.title}" 已添加到主页`);
+    } catch (error) {
+      Alert.alert('添加失败', error.message || '无法添加到主页');
+    }
+  };
+
+  // 导航到主页
+  const handleNavigateToHome = () => {
+    if (currentTab) {
+      updateTab(currentTab.id, {
+        url: homePageUrl,
+        isLoading: false,
+        progress: 0,
+        title: 'VaiBrowser 主页'
+      });
+    }
+  };
+
+  // Share functionality
+  const handleShare = async () => {
+    if (!currentTab) return;
+
+    try {
+      await Share.share({
+        message: `${currentTab.title}\n${currentTab.url}`,
+        url: currentTab.url,
+        title: currentTab.title,
+      });
+    } catch (error) {
+      console.error('Share failed:', error);
+    }
+  };
+
+  // Render main content
+  const renderMainContent = () => {
+    if (!currentTab) return null;
+
+    const isHomePage = homePageService.isCustomHomePage(currentTab.url);
+
+    if (isHomePage) {
+      return (
+        <HomePage
+          onNavigate={handleNavigate}
+          onShowAIChat={() => setShowAIChat(true)}
+          onShowResourceSniffer={() => setShowResourceSniffer(true)}
+          onShowUserScripts={() => setShowUserScripts(true)}
+          onShowDownloads={() => setShowDownloads(true)}
+          onShowBookmarks={() => setShowBookmarks(true)}
+          onShowHistory={() => setShowHistory(true)}
+          shortcuts={homePageShortcuts}
+          onUpdateShortcuts={handleUpdateHomePageShortcuts}
+          currentPageUrl={currentTab.url !== homePageUrl ? currentTab.url : undefined}
+          currentPageTitle={currentTab.url !== homePageUrl ? currentTab.title : undefined}
+          aiConfigured={aiConfigured}
+        />
+      );
+    }
+
+    return (
+      <BrowserWebView
+        url={currentTab.url}
+        userScripts={userScripts}
+        onNavigationStateChange={handleNavigationStateChange}
+        onLoadStart={handleLoadStart}
+        onLoadEnd={handleLoadEnd}
+        onLoadProgress={handleLoadProgress}
+        onMessage={handleWebViewMessage}
+        onResourceSniffed={handleResourceSniffed}
+        ref={(ref) => {
+          if (ref && currentTab) {
+            webViewRef.current = ref;
+          }
+        }}
+      />
+    );
+  };
+
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowHistory(true)}
       >
         <Text style={styles.quickActionIcon}>📚</Text>
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>History</Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowBookmarks(true)}
       >
         <Text style={styles.quickActionIcon}>⭐</Text>
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Bookmarks</Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowDownloads(true)}
       >
@@ -939,15 +1087,15 @@ export default function BrowserScreen() {
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Downloads</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowUserScripts(true)}
       >
         <Text style={styles.quickActionIcon}>🐒</Text>
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Scripts</Text>
       </TouchableOpacity>
-      
-      <TouchableOpacity 
+
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowAIChat(true)}
       >
@@ -955,7 +1103,7 @@ export default function BrowserScreen() {
         <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>AI Chat</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
         onPress={() => setShowResourceSniffer(true)}
       >
@@ -967,12 +1115,12 @@ export default function BrowserScreen() {
 
   const renderPerformanceIndicator = () => {
     if (!performanceStats || tabs.length === 0) return null;
-    
+
     return (
       <View style={[styles.performanceIndicator, isDark && styles.performanceIndicatorDark]}>
         <Text style={[styles.performanceText, isDark && styles.performanceTextDark]}>
-          🚀 {performanceStats.totalTabs} tabs • 
-          📊 {Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB • 
+          🚀 {performanceStats.totalTabs} tabs •
+          📊 {Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB •
           ⚡ {Math.round(performanceStats.averageLoadTime)}ms •
           🤖 <Text style={{ color: aiService.isConfigured() ? '#4CAF50' : '#FF3B30' }}>
             {aiService.isConfigured() ? 'AI' : 'OFF'}
@@ -999,36 +1147,34 @@ export default function BrowserScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-      
+
       {/* Address Bar */}
       <AddressBar
-        currentUrl={currentTab.url}
+        url={currentTab.url}
         isLoading={currentTab.isLoading}
         progress={currentTab.progress}
-        onNavigate={handleNavigate}
-        onShowSuggestions={handleShowSuggestions}
-        suggestions={searchSuggestions}
-        onRefresh={handleRefresh}
-        onGoBack={handleGoBack}
-        onGoForward={handleGoForward}
         canGoBack={currentTab.canGoBack}
         canGoForward={currentTab.canGoForward}
-        onToggleAI={handleToggleAI}
-        aiEnabled={aiChatVisible}
-        isBookmarked={bookmarked && !currentTab.isIncognito}
-        onToggleBookmark={handleToggleBookmark}
-        onShowHistory={handleShowHistory}
-        onShowBookmarks={handleShowBookmarks}
-        onShowTabManager={() => setTabManagerVisible(true)}
-        tabCount={tabs.length}
-        isIncognito={currentTab.isIncognito}
-        onShowDownloads={() => setDownloadManagerVisible(true)}
-        downloadCount={downloads.filter(d => d.status === 'downloading' || d.status === 'pending').length}
-        onUserScriptsPress={() => setShowUserScripts(true)}
+        isBookmarked={bookmarked}
+        onNavigate={handleNavigate}
+        onGoBack={handleGoBack}
+        onGoForward={handleGoForward}
+        onRefresh={handleRefresh}
+        onBookmark={handleToggleBookmark}
+        onShare={handleShare}
+        onNewTab={handleNewTab}
         onQuickAIChat={handleQuickAIChat}
+        onResourceSniffer={handleResourceSniffed}
         aiConfigured={aiConfigured}
-        onShowResourceSniffer={() => setShowResourceSniffer(true)}
+        onHome={handleNavigateToHome}
+        onAddToHome={handleAddCurrentPageToHome}
+        showAddToHome={currentTab.url !== homePageUrl && !homePageService.isCustomHomePage(currentTab.url)}
       />
+
+      {/* Main Content Area */}
+      <View style={styles.contentContainer}>
+        {renderMainContent()}
+      </View>
 
       {/* Performance Indicator */}
       {renderPerformanceIndicator()}
@@ -1068,7 +1214,7 @@ export default function BrowserScreen() {
         onTabClose={handleTabClose}
         onNewTab={() => handleNewTab(false)}
         onShowTabManager={() => setTabManagerVisible(true)}
-        isVisible={showTabBar && tabs.length > 1}
+        isVisible={tabs.length > 1}
       />
 
       {/* AI Chat Panel */}
@@ -1222,5 +1368,8 @@ const styles = StyleSheet.create({
   },
   quickActionTextDark: {
     color: '#FFF',
+  },
+  contentContainer: {
+    flex: 1,
   },
 });
