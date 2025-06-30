@@ -48,6 +48,7 @@ interface AddressBarProps {
   onShowResourceSniffer?: () => void;
   onHome?: () => void;
   onAddToHome?: () => void;
+  onShowToolsMenu?: () => void;
   showAddToHome?: boolean;
 }
 
@@ -80,6 +81,7 @@ export default function AddressBar({
   onShowResourceSniffer,
   onHome,
   onAddToHome,
+  onShowToolsMenu,
   showAddToHome,
 }: AddressBarProps) {
   const [inputValue, setInputValue] = useState("");
@@ -352,6 +354,16 @@ export default function AddressBar({
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
+          {/* Tools Menu Button */}
+          {onShowToolsMenu && (
+            <TouchableOpacity
+              style={[styles.actionButton, isDark && styles.actionButtonDark]}
+              onPress={onShowToolsMenu}
+            >
+              <Text style={styles.actionButtonText}>🔧</Text>
+            </TouchableOpacity>
+          )}
+
           {/* Tab Manager Button */}
           {onShowTabManager && (
             <TouchableOpacity
@@ -453,24 +465,6 @@ export default function AddressBar({
             />
           </TouchableOpacity>
 
-          {/* New User Scripts Button */}
-          <TouchableOpacity
-            style={[styles.actionButton, isDark && styles.actionButtonDark]}
-            onPress={onUserScriptsPress}
-          >
-            <Text style={styles.actionButtonText}>🐒</Text>
-          </TouchableOpacity>
-
-          {/* Resource Sniffer Button */}
-          {onShowResourceSniffer && (
-            <TouchableOpacity
-              style={[styles.actionButton, isDark && styles.actionButtonDark]}
-              onPress={onShowResourceSniffer}
-            >
-              <Text style={styles.actionButtonText}>🕵️</Text>
-            </TouchableOpacity>
-          )}
-
           {/* Home Button */}
           {onHome && (
             <TouchableOpacity onPress={onHome} style={styles.actionButton}>
@@ -492,62 +486,6 @@ export default function AddressBar({
               />
             </TouchableOpacity>
           )}
-
-          {/* Quick AI Chat */}
-          {aiConfigured && (
-            <TouchableOpacity
-              onPress={onQuickAIChat}
-              style={styles.actionButton}
-            >
-              <Ionicons
-                name="sparkles"
-                size={22}
-                color={isDark ? "#007AFF" : "#007AFF"}
-              />
-            </TouchableOpacity>
-          )}
-
-          {/* Resource Sniffer */}
-          <TouchableOpacity
-            onPress={onShowResourceSniffer}
-            style={styles.actionButton}
-          >
-            <Ionicons
-              name="search-outline"
-              size={22}
-              color={isDark ? "#8E8E93" : "#6B6B6B"}
-            />
-          </TouchableOpacity>
-
-          {/* Bookmark */}
-          <TouchableOpacity
-            onPress={onToggleBookmark}
-            style={styles.actionButton}
-          >
-            <Ionicons
-              name={isBookmarked ? "bookmark" : "bookmark-outline"}
-              size={22}
-              color={isBookmarked ? "#FF9500" : isDark ? "#8E8E93" : "#6B6B6B"}
-            />
-          </TouchableOpacity>
-
-          {/* Share */}
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons
-              name="share-outline"
-              size={22}
-              color={isDark ? "#8E8E93" : "#6B6B6B"}
-            />
-          </TouchableOpacity>
-
-          {/* More Options */}
-          <TouchableOpacity style={styles.actionButton}>
-            <Ionicons
-              name="ellipsis-horizontal"
-              size={22}
-              color={isDark ? "#8E8E93" : "#6B6B6B"}
-            />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -629,8 +567,19 @@ const styles = StyleSheet.create({
     paddingVertical: 4,
   },
   actionButton: {
-    padding: 4,
-    marginLeft: 8,
+    padding: 8,
+    marginLeft: 4,
+    borderRadius: 20,
+    minWidth: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionButtonDark: {
+    backgroundColor: '#2C2C2E',
+  },
+  actionButtonText: {
+    fontSize: 18,
+    color: '#666',
   },
   actionButtons: {
     flexDirection: "row",
@@ -658,13 +607,19 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     position: "relative",
   },
+  downloadButtonContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   downloadBadge: {
     position: "absolute",
-    top: 2,
-    right: 2,
+    top: -2,
+    right: -2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
+    backgroundColor: '#FF3B30',
     justifyContent: "center",
     alignItems: "center",
   },
@@ -678,6 +633,11 @@ const styles = StyleSheet.create({
     padding: 8,
     borderRadius: 20,
     marginLeft: 8,
+  },
+  quickAIChatButton: {
+    backgroundColor: "#F0F8FF",
+    borderRadius: 16,
+    paddingHorizontal: 2,
   },
   progressContainer: {
     height: 2,
@@ -729,20 +689,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 2,
     textTransform: "capitalize",
-  },
-  actionButtonDark: {
-    // Add appropriate styles for dark mode
-  },
-  actionButtonText: {
-    // Add appropriate styles for text
-  },
-  downloadButtonContainer: {
-    // Add appropriate styles for download button container
-  },
-  quickAIChatButton: {
-    backgroundColor: "#F0F8FF",
-    borderRadius: 16,
-    paddingHorizontal: 2,
   },
 });
 

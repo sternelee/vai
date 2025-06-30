@@ -15,6 +15,7 @@ import HomePage from '@/components/browser/HomePage';
 import ResourceSniffer from '@/components/browser/ResourceSniffer';
 import TabBar from '@/components/browser/TabBar';
 import TabManager from '@/components/browser/TabManager';
+import ToolsMenu from '@/components/browser/ToolsMenu';
 import UserScriptManager from '@/components/browser/UserScriptManager';
 
 // Services
@@ -124,6 +125,7 @@ export default function BrowserScreen() {
   const [showUserScripts, setShowUserScripts] = useState(false);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showResourceSniffer, setShowResourceSniffer] = useState(false);
+  const [showToolsMenu, setShowToolsMenu] = useState(false);
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
   const [pageResources, setPageResources] = useState<ResourceItem[]>([]);
 
@@ -768,12 +770,12 @@ export default function BrowserScreen() {
   const handleConfigureAI = () => {
     Alert.alert(
       'Configure AI',
-      'To use AI features, you need to configure an OpenAI API key in the Settings.',
+      'To use AI features, you need to configure an AI provider and API key in the Settings.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
           text: 'Go to Settings', onPress: () => {
-            // This would navigate to settings tab
+            // Navigate to settings tab - this should be implemented with proper navigation
             console.log('Navigate to settings tab');
           }
         },
@@ -1039,6 +1041,125 @@ export default function BrowserScreen() {
     }
   };
 
+  // 工具菜单配置
+  const getToolsMenuItems = () => {
+    const mcpStats = mcpService.getStatistics();
+    const scriptStats = userScriptService.getScriptStats();
+
+    return [
+      {
+        id: 'ai_chat',
+        title: 'AI 智能助手',
+        subtitle: aiConfigured ? '与AI进行智能对话' : '需要配置AI提供商',
+        icon: 'chatbubble-ellipses',
+        color: '#007AFF',
+        onPress: () => setShowAIChat(true),
+        disabled: !aiConfigured,
+      },
+      {
+        id: 'ai_quick',
+        title: '快速AI对话',
+        subtitle: '基于当前页面内容的AI对话',
+        icon: 'sparkles',
+        color: '#5856D6',
+        onPress: handleQuickAIChat,
+        disabled: !aiConfigured,
+      },
+      {
+        id: 'tools_scripts',
+        title: '用户脚本',
+        subtitle: `${scriptStats?.enabledScripts || 0} 个脚本已启用`,
+        icon: 'code-slash',
+        color: '#AF52DE',
+        onPress: () => setShowUserScripts(true),
+        badge: scriptStats?.enabledScripts > 0 ? String(scriptStats.enabledScripts) : undefined,
+      },
+      {
+        id: 'tools_resources',
+        title: '资源嗅探',
+        subtitle: '提取并下载页面资源',
+        icon: 'search',
+        color: '#34C759',
+        onPress: () => setShowResourceSniffer(true),
+      },
+      {
+        id: 'tools_mcp',
+        title: 'MCP 工具',
+        subtitle: `${mcpStats.connectedServers} 个服务器已连接`,
+        icon: 'extension-puzzle',
+        color: '#FF9500',
+        onPress: () => {
+          // Navigate to settings MCP section
+          console.log('Navigate to MCP settings');
+        },
+        badge: mcpStats.connectedServers > 0 ? String(mcpStats.connectedServers) : undefined,
+      },
+      {
+        id: 'browser_downloads',
+        title: '下载管理',
+        subtitle: '查看和管理下载文件',
+        icon: 'download',
+        color: '#FF3B30',
+        onPress: () => setDownloadManagerVisible(true),
+        badge: downloads.length > 0 ? String(downloads.length) : undefined,
+      },
+      {
+        id: 'browser_bookmarks',
+        title: '书签',
+        subtitle: '管理收藏的网页',
+        icon: 'bookmark',
+        color: '#FF9500',
+        onPress: () => setBookmarksVisible(true),
+      },
+      {
+        id: 'browser_history',
+        title: '浏览历史',
+        subtitle: currentTab?.isIncognito ? '隐身模式下不可用' : '查看浏览记录',
+        icon: 'time',
+        color: '#5856D6',
+        onPress: () => setHistoryVisible(true),
+        disabled: currentTab?.isIncognito,
+      },
+      {
+        id: 'browser_tabs',
+        title: '标签管理',
+        subtitle: `当前有 ${tabs.length} 个标签页`,
+        icon: 'browsers',
+        color: '#007AFF',
+        onPress: () => setTabManagerVisible(true),
+        badge: tabs.length > 1 ? String(tabs.length) : undefined,
+      },
+      {
+        id: 'browser_share',
+        title: '分享页面',
+        subtitle: '分享当前网页',
+        icon: 'share',
+        color: '#34C759',
+        onPress: handleShare,
+        disabled: !currentTab || currentTab.url === homePageUrl,
+      },
+      {
+        id: 'settings_performance',
+        title: '性能监控',
+        subtitle: performanceStats ?
+          `内存: ${Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB` :
+          '查看浏览器性能',
+        icon: 'speedometer',
+        color: '#FF3B30',
+        onPress: () => {
+          Alert.alert(
+            '性能统计',
+            `标签页: ${performanceStats?.totalTabs || 0}\n` +
+            `内存使用: ${Math.round((performanceStats?.averageMemoryUsage || 0) / 1024 / 1024)}MB\n` +
+            `平均加载时间: ${Math.round(performanceStats?.averageLoadTime || 0)}ms\n` +
+            `缓存命中率: ${Math.round(performanceStats?.cacheHitRate || 0)}%`,
+            [{ text: '确定' }]
+          );
+        },
+      },
+    ];
+  };
+
   // Render main content
   const renderMainContent = () => {
     if (!currentTab) return null;
@@ -1184,6 +1305,7 @@ export default function BrowserScreen() {
         onShowResourceSniffer={() => setShowResourceSniffer(true)}
         onHome={handleNavigateToHome}
         onAddToHome={handleAddCurrentPageToHome}
+        onShowToolsMenu={() => setShowToolsMenu(true)}
         showAddToHome={currentTab.url !== homePageUrl && !homePageService.isCustomHomePage(currentTab.url)}
       />
 
@@ -1231,6 +1353,15 @@ export default function BrowserScreen() {
         onNewTab={() => handleNewTab(false)}
         onShowTabManager={() => setTabManagerVisible(true)}
         isVisible={tabs.length > 1}
+      />
+
+      {/* Tools Menu */}
+      <ToolsMenu
+        isVisible={showToolsMenu}
+        onClose={() => setShowToolsMenu(false)}
+        tools={getToolsMenuItems()}
+        title="浏览器工具"
+        subtitle="选择要使用的功能和工具"
       />
 
       {/* AI Chat Panel */}
