@@ -1,6 +1,6 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { Ionicons } from "@expo/vector-icons";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -10,11 +10,11 @@ import {
   TextInput,
   TouchableOpacity,
   View,
-} from 'react-native';
+} from "react-native";
 
 interface SearchSuggestion {
   query: string;
-  type: 'search' | 'url' | 'history' | 'bookmark';
+  type: "search" | "url" | "history" | "bookmark";
   confidence: number;
   icon?: string;
 }
@@ -57,7 +57,7 @@ export default function AddressBar({
   progress,
   onNavigate,
   onShowSuggestions,
-  suggestions,
+  suggestions = [],
   onRefresh,
   onGoBack,
   onGoForward,
@@ -82,13 +82,13 @@ export default function AddressBar({
   onAddToHome,
   showAddToHome,
 }: AddressBarProps) {
-  const [inputValue, setInputValue] = useState('');
+  const [inputValue, setInputValue] = useState("");
   const [isFocused, setIsFocused] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const colorScheme = useColorScheme();
   const inputRef = useRef<TextInput>(null);
 
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
   useEffect(() => {
     if (!isFocused) {
@@ -138,13 +138,13 @@ export default function AddressBar({
     inputRef.current?.blur();
   };
 
-  const getSecurityIcon = (url: string) => {
+  const getSecurityIcon = (url: string = "") => {
     if (isIncognito) {
       return <Ionicons name="eye-off" size={16} color="#8E44AD" />;
     }
-    if (url.startsWith('https://')) {
+    if (url.startsWith("https://")) {
       return <Ionicons name="lock-closed" size={16} color="#4CAF50" />;
-    } else if (url.startsWith('http://')) {
+    } else if (url.startsWith("http://")) {
       return <Ionicons name="information-circle" size={16} color="#FF9800" />;
     }
     return null;
@@ -152,21 +152,21 @@ export default function AddressBar({
 
   const getSuggestionIcon = (type: string) => {
     switch (type) {
-      case 'url':
-        return 'globe-outline';
-      case 'history':
-        return 'time-outline';
-      case 'bookmark':
-        return 'bookmark-outline';
-      case 'search':
+      case "url":
+        return "globe-outline";
+      case "history":
+        return "time-outline";
+      case "bookmark":
+        return "bookmark-outline";
+      case "search":
       default:
-        return 'search-outline';
+        return "search-outline";
     }
   };
 
   const formatDisplayUrl = (url: string) => {
     if (isIncognito) {
-      return 'Incognito Mode';
+      return "Incognito Mode";
     }
     try {
       const urlObj = new URL(url);
@@ -178,28 +178,41 @@ export default function AddressBar({
 
   const renderSuggestion = ({ item }: { item: SearchSuggestion }) => (
     <TouchableOpacity
-      style={[styles.suggestionItem, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}
+      style={[
+        styles.suggestionItem,
+        { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" },
+      ]}
       onPress={() => handleSuggestionPress(item)}
     >
       <Ionicons
         name={getSuggestionIcon(item.type) as any}
         size={20}
-        color={isDark ? '#8E8E93' : '#6B6B6B'}
+        color={isDark ? "#8E8E93" : "#6B6B6B"}
         style={styles.suggestionIcon}
       />
       <View style={styles.suggestionContent}>
-        <Text style={[styles.suggestionText, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+        <Text
+          style={[
+            styles.suggestionText,
+            { color: isDark ? "#FFFFFF" : "#000000" },
+          ]}
+        >
           {item.query}
         </Text>
-        <Text style={[styles.suggestionType, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
+        <Text
+          style={[
+            styles.suggestionType,
+            { color: isDark ? "#8E8E93" : "#6B6B6B" },
+          ]}
+        >
           {item.type}
         </Text>
       </View>
       <Ionicons
         name="arrow-up-outline"
         size={16}
-        color={isDark ? '#8E8E93' : '#6B6B6B'}
-        style={{ transform: [{ rotate: '45deg' }] }}
+        color={isDark ? "#8E8E93" : "#6B6B6B"}
+        style={{ transform: [{ rotate: "45deg" }] }}
       />
     </TouchableOpacity>
   );
@@ -207,17 +220,19 @@ export default function AddressBar({
   return (
     <View style={styles.container}>
       {/* Main Address Bar */}
-      <View style={[
-        styles.addressBarContainer, 
-        { 
-          backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
-          ...(isIncognito && {
-            backgroundColor: isDark ? '#1A1A1A' : '#F0F0F0',
-            borderBottomColor: '#8E44AD',
-            borderBottomWidth: 2,
-          })
-        }
-      ]}>
+      <View
+        style={[
+          styles.addressBarContainer,
+          {
+            backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
+            ...(isIncognito && {
+              backgroundColor: isDark ? "#1A1A1A" : "#F0F0F0",
+              borderBottomColor: "#8E44AD",
+              borderBottomWidth: 2,
+            }),
+          },
+        ]}
+      >
         {/* Navigation Controls */}
         <View style={styles.navigationControls}>
           <TouchableOpacity
@@ -225,30 +240,40 @@ export default function AddressBar({
             onPress={onGoBack}
             disabled={!canGoBack}
           >
-            <Ionicons name="chevron-back" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+            <Ionicons
+              name="chevron-back"
+              size={24}
+              color={isDark ? "#FFFFFF" : "#000000"}
+            />
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.navButton, { opacity: canGoForward ? 1 : 0.3 }]}
             onPress={onGoForward}
             disabled={!canGoForward}
           >
-            <Ionicons name="chevron-forward" size={24} color={isDark ? '#FFFFFF' : '#000000'} />
+            <Ionicons
+              name="chevron-forward"
+              size={24}
+              color={isDark ? "#FFFFFF" : "#000000"}
+            />
           </TouchableOpacity>
         </View>
 
         {/* Address Input Container */}
-        <View style={[
-          styles.inputContainer, 
-          { 
-            backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
-            ...(isIncognito && {
-              backgroundColor: isDark ? '#2A2A2A' : '#E8E8E8',
-              borderColor: '#8E44AD',
-              borderWidth: 1,
-            })
-          }
-        ]}>
+        <View
+          style={[
+            styles.inputContainer,
+            {
+              backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+              ...(isIncognito && {
+                backgroundColor: isDark ? "#2A2A2A" : "#E8E8E8",
+                borderColor: "#8E44AD",
+                borderWidth: 1,
+              }),
+            },
+          ]}
+        >
           {/* Security Icon */}
           <View style={styles.securityIcon}>
             {!isFocused && getSecurityIcon(currentUrl)}
@@ -258,22 +283,22 @@ export default function AddressBar({
           <TextInput
             ref={inputRef}
             style={[
-              styles.textInput, 
-              { 
-                color: isDark ? '#FFFFFF' : '#000000',
-                ...(isIncognito && { fontStyle: 'italic' })
-              }
+              styles.textInput,
+              {
+                color: isDark ? "#FFFFFF" : "#000000",
+                ...(isIncognito && { fontStyle: "italic" }),
+              },
             ]}
             value={isFocused ? inputValue : formatDisplayUrl(currentUrl)}
             onChangeText={handleTextChange}
             onFocus={handleFocus}
             onBlur={handleBlur}
             onSubmitEditing={handleSubmit}
-            placeholder={isIncognito ? "Incognito browsing..." : "Search or enter address"}
+            placeholder={
+              isIncognito ? "Incognito browsing..." : "Search or enter address"
+            }
             placeholderTextColor={
-              isIncognito 
-                ? '#8E44AD' 
-                : (isDark ? '#8E8E93' : '#6B6B6B')
+              isIncognito ? "#8E44AD" : isDark ? "#8E8E93" : "#6B6B6B"
             }
             returnKeyType="go"
             autoCorrect={false}
@@ -284,41 +309,42 @@ export default function AddressBar({
 
           {/* Bookmark Button */}
           {onToggleBookmark && !isIncognito && (
-            <TouchableOpacity style={styles.actionButton} onPress={onToggleBookmark}>
+            <TouchableOpacity
+              style={styles.actionButton}
+              onPress={onToggleBookmark}
+            >
               <Ionicons
                 name={isBookmarked ? "bookmark" : "bookmark-outline"}
                 size={20}
-                color={isBookmarked ? "#007AFF" : (isDark ? '#8E8E93' : '#6B6B6B')}
+                color={
+                  isBookmarked ? "#007AFF" : isDark ? "#8E8E93" : "#6B6B6B"
+                }
               />
             </TouchableOpacity>
           )}
 
           {/* Quick AI Chat Button */}
           {onQuickAIChat && aiConfigured && !isIncognito && (
-            <TouchableOpacity 
-              style={[styles.actionButton, styles.quickAIChatButton]} 
+            <TouchableOpacity
+              style={[styles.actionButton, styles.quickAIChatButton]}
               onPress={onQuickAIChat}
             >
-              <Ionicons
-                name="chatbubble-ellipses"
-                size={18}
-                color="#007AFF"
-              />
+              <Ionicons name="chatbubble-ellipses" size={18} color="#007AFF" />
             </TouchableOpacity>
           )}
 
           {/* Loading/Refresh Button */}
           <TouchableOpacity style={styles.actionButton} onPress={onRefresh}>
             {isLoading ? (
-              <ActivityIndicator 
-                size="small" 
-                color={isIncognito ? '#8E44AD' : (isDark ? '#FFFFFF' : '#000000')} 
+              <ActivityIndicator
+                size="small"
+                color={isIncognito ? "#8E44AD" : isDark ? "#FFFFFF" : "#000000"}
               />
             ) : (
-              <Ionicons 
-                name="refresh" 
-                size={20} 
-                color={isIncognito ? '#8E44AD' : (isDark ? '#8E8E93' : '#6B6B6B')} 
+              <Ionicons
+                name="refresh"
+                size={20}
+                color={isIncognito ? "#8E44AD" : isDark ? "#8E8E93" : "#6B6B6B"}
               />
             )}
           </TouchableOpacity>
@@ -331,25 +357,29 @@ export default function AddressBar({
             <TouchableOpacity
               style={[
                 styles.tabManagerButton,
-                { 
-                  backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7',
+                {
+                  backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
                   ...(isIncognito && {
-                    backgroundColor: isDark ? '#2A2A2A' : '#E8E8E8',
-                    borderColor: '#8E44AD',
+                    backgroundColor: isDark ? "#2A2A2A" : "#E8E8E8",
+                    borderColor: "#8E44AD",
                     borderWidth: 1,
-                  })
-                }
+                  }),
+                },
               ]}
               onPress={onShowTabManager}
             >
-              <Text style={[
-                styles.tabCount,
-                { 
-                  color: isIncognito 
-                    ? '#8E44AD' 
-                    : (isDark ? '#FFFFFF' : '#000000')
-                }
-              ]}>
+              <Text
+                style={[
+                  styles.tabCount,
+                  {
+                    color: isIncognito
+                      ? "#8E44AD"
+                      : isDark
+                        ? "#FFFFFF"
+                        : "#000000",
+                  },
+                ]}
+              >
                 {tabCount}
               </Text>
             </TouchableOpacity>
@@ -385,7 +415,9 @@ export default function AddressBar({
                 <Text style={styles.actionButtonText}>📥</Text>
                 {(downloadCount || 0) > 0 && (
                   <View style={styles.downloadBadge}>
-                    <Text style={styles.downloadBadgeText}>{downloadCount || 0}</Text>
+                    <Text style={styles.downloadBadgeText}>
+                      {downloadCount || 0}
+                    </Text>
                   </View>
                 )}
               </View>
@@ -396,12 +428,13 @@ export default function AddressBar({
           <TouchableOpacity
             style={[
               styles.aiButton,
-              { 
-                backgroundColor: aiEnabled ? '#007AFF' : 'transparent',
-                ...(isIncognito && aiEnabled && {
-                  backgroundColor: '#8E44AD',
-                })
-              }
+              {
+                backgroundColor: aiEnabled ? "#007AFF" : "transparent",
+                ...(isIncognito &&
+                  aiEnabled && {
+                    backgroundColor: "#8E44AD",
+                  }),
+              },
             ]}
             onPress={onToggleAI}
           >
@@ -409,11 +442,13 @@ export default function AddressBar({
               name="sparkles"
               size={20}
               color={
-                aiEnabled 
-                  ? '#FFFFFF' 
-                  : isIncognito 
-                    ? '#8E44AD'
-                    : (isDark ? '#8E8E93' : '#6B6B6B')
+                aiEnabled
+                  ? "#FFFFFF"
+                  : isIncognito
+                    ? "#8E44AD"
+                    : isDark
+                      ? "#8E8E93"
+                      : "#6B6B6B"
               }
             />
           </TouchableOpacity>
@@ -439,46 +474,79 @@ export default function AddressBar({
           {/* Home Button */}
           {onHome && (
             <TouchableOpacity onPress={onHome} style={styles.actionButton}>
-              <Ionicons name="home-outline" size={22} color={isDark ? '#007AFF' : '#007AFF'} />
+              <Ionicons
+                name="home-outline"
+                size={22}
+                color={isDark ? "#007AFF" : "#007AFF"}
+              />
             </TouchableOpacity>
           )}
 
           {/* Add to Home Button */}
           {showAddToHome && onAddToHome && (
             <TouchableOpacity onPress={onAddToHome} style={styles.actionButton}>
-              <Ionicons name="add-circle-outline" size={22} color={isDark ? '#34C759' : '#34C759'} />
+              <Ionicons
+                name="add-circle-outline"
+                size={22}
+                color={isDark ? "#34C759" : "#34C759"}
+              />
             </TouchableOpacity>
           )}
 
           {/* Quick AI Chat */}
           {aiConfigured && (
-            <TouchableOpacity onPress={onQuickAIChat} style={styles.actionButton}>
-              <Ionicons name="sparkles" size={22} color={isDark ? '#007AFF' : '#007AFF'} />
+            <TouchableOpacity
+              onPress={onQuickAIChat}
+              style={styles.actionButton}
+            >
+              <Ionicons
+                name="sparkles"
+                size={22}
+                color={isDark ? "#007AFF" : "#007AFF"}
+              />
             </TouchableOpacity>
           )}
 
           {/* Resource Sniffer */}
-          <TouchableOpacity onPress={onShowResourceSniffer} style={styles.actionButton}>
-            <Ionicons name="search-outline" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+          <TouchableOpacity
+            onPress={onShowResourceSniffer}
+            style={styles.actionButton}
+          >
+            <Ionicons
+              name="search-outline"
+              size={22}
+              color={isDark ? "#8E8E93" : "#6B6B6B"}
+            />
           </TouchableOpacity>
 
           {/* Bookmark */}
-          <TouchableOpacity onPress={onToggleBookmark} style={styles.actionButton}>
-            <Ionicons 
-              name={isBookmarked ? 'bookmark' : 'bookmark-outline'} 
-              size={22} 
-              color={isBookmarked ? '#FF9500' : (isDark ? '#8E8E93' : '#6B6B6B')} 
+          <TouchableOpacity
+            onPress={onToggleBookmark}
+            style={styles.actionButton}
+          >
+            <Ionicons
+              name={isBookmarked ? "bookmark" : "bookmark-outline"}
+              size={22}
+              color={isBookmarked ? "#FF9500" : isDark ? "#8E8E93" : "#6B6B6B"}
             />
           </TouchableOpacity>
 
           {/* Share */}
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="share-outline" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+            <Ionicons
+              name="share-outline"
+              size={22}
+              color={isDark ? "#8E8E93" : "#6B6B6B"}
+            />
           </TouchableOpacity>
 
           {/* More Options */}
           <TouchableOpacity style={styles.actionButton}>
-            <Ionicons name="ellipsis-horizontal" size={22} color={isDark ? '#8E8E93' : '#6B6B6B'} />
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={22}
+              color={isDark ? "#8E8E93" : "#6B6B6B"}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -491,7 +559,7 @@ export default function AddressBar({
               styles.progressBar,
               {
                 width: `${progress * 100}%`,
-                backgroundColor: isIncognito ? '#8E44AD' : '#007AFF',
+                backgroundColor: isIncognito ? "#8E44AD" : "#007AFF",
               },
             ]}
           />
@@ -500,7 +568,12 @@ export default function AddressBar({
 
       {/* Suggestions List */}
       {showSuggestions && suggestions.length > 0 && (
-        <View style={[styles.suggestionsContainer, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+        <View
+          style={[
+            styles.suggestionsContainer,
+            { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
+          ]}
+        >
           <FlatList
             data={suggestions}
             renderItem={renderSuggestion}
@@ -517,19 +590,19 @@ export default function AddressBar({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'relative',
+    position: "relative",
     zIndex: 1000,
   },
   addressBarContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: "#E5E5EA",
   },
   navigationControls: {
-    flexDirection: 'row',
+    flexDirection: "row",
     marginRight: 8,
   },
   navButton: {
@@ -538,16 +611,16 @@ const styles = StyleSheet.create({
   },
   inputContainer: {
     flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     borderRadius: 10,
     paddingHorizontal: 12,
     paddingVertical: 8,
   },
   securityIcon: {
     width: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   textInput: {
     flex: 1,
@@ -560,21 +633,21 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 8,
   },
   tabManagerButton: {
     width: 32,
     height: 32,
     borderRadius: 6,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 4,
   },
   tabCount: {
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   roundActionButton: {
     padding: 8,
@@ -583,22 +656,22 @@ const styles = StyleSheet.create({
   downloadButton: {
     padding: 8,
     marginLeft: 4,
-    position: 'relative',
+    position: "relative",
   },
   downloadBadge: {
-    position: 'absolute',
+    position: "absolute",
     top: 2,
     right: 2,
     minWidth: 16,
     height: 16,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   downloadBadgeText: {
-    color: '#FFFFFF',
+    color: "#FFFFFF",
     fontSize: 10,
-    fontWeight: '600',
+    fontWeight: "600",
     paddingHorizontal: 4,
   },
   aiButton: {
@@ -608,21 +681,21 @@ const styles = StyleSheet.create({
   },
   progressContainer: {
     height: 2,
-    backgroundColor: '#E5E5EA',
+    backgroundColor: "#E5E5EA",
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
   },
   suggestionsContainer: {
-    position: 'absolute',
-    top: '100%',
+    position: "absolute",
+    top: "100%",
     left: 0,
     right: 0,
     maxHeight: 300,
     borderRadius: 10,
     marginHorizontal: 16,
     marginTop: 4,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 2,
@@ -635,12 +708,12 @@ const styles = StyleSheet.create({
     maxHeight: 300,
   },
   suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     paddingHorizontal: 16,
     paddingVertical: 12,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: "#E5E5EA",
   },
   suggestionIcon: {
     marginRight: 12,
@@ -650,12 +723,12 @@ const styles = StyleSheet.create({
   },
   suggestionText: {
     fontSize: 16,
-    fontWeight: '400',
+    fontWeight: "400",
   },
   suggestionType: {
     fontSize: 12,
     marginTop: 2,
-    textTransform: 'capitalize',
+    textTransform: "capitalize",
   },
   actionButtonDark: {
     // Add appropriate styles for dark mode
@@ -667,8 +740,9 @@ const styles = StyleSheet.create({
     // Add appropriate styles for download button container
   },
   quickAIChatButton: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: "#F0F8FF",
     borderRadius: 16,
     paddingHorizontal: 2,
   },
-}); 
+});
+

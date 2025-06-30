@@ -1,7 +1,8 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Alert, SafeAreaView, Share, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Modal from 'react-native-modal';
+import { WebView } from 'react-native-webview';
 
 // Components
 import AddressBar from '@/components/browser/AddressBar';
@@ -18,7 +19,7 @@ import UserScriptManager from '@/components/browser/UserScriptManager';
 
 // Services
 import { aiService } from '@/services/AIService';
-import { databaseService } from '@/services/DatabaseService';
+import databaseService from '@/services/DatabaseService';
 import { downloadService } from '@/services/DownloadService';
 import { homePageService } from '@/services/HomePageService';
 import { mcpService } from '@/services/MCPService';
@@ -40,7 +41,7 @@ interface Tab {
   canGoBack: boolean;
   canGoForward: boolean;
   isIncognito: boolean;
-  isActive?: boolean;
+  isActive: boolean;
   lastVisited?: string;
 }
 
@@ -62,35 +63,43 @@ interface DownloadItem {
   id: string;
   url: string;
   filename: string;
-  status: 'pending' | 'downloading' | 'completed' | 'failed' | 'paused';
+  status: 'pending' | 'downloading' | 'completed' | 'paused' | 'error' | 'cancelled';
   progress: number;
   totalSize?: number;
-  downloadedSize?: number;
+  downloadedSize: number;
+  fileSize: number;
+  startTime: string;
   createdAt: string;
 }
 
 interface ResourceItem {
   id: string;
   url: string;
-  type: string;
-  size: number;
-  createdAt: string;
+  type: 'image' | 'video' | 'audio' | 'document' | 'script' | 'style' | 'other';
+  name: string;
+  size?: string;
+  extension?: string;
+  thumbnail?: string;
 }
 
 interface HomePageShortcut {
   id: string;
   title: string;
   url: string;
+  addedAt: string;
 }
 
 export default function BrowserScreen() {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  // Add WebView ref
+  const webViewRef = useRef<WebView>(null);
+
   // State
   const [activeTabId, setActiveTabId] = useState<string>('');
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [navigationCommand, setNavigationCommand] = useState<'refresh' | 'back' | 'forward' | null>(null);
+  const [navigationCommand, setNavigationCommand] = useState<'reload' | 'back' | 'forward' | null>(null);
   const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
   const [aiChatVisible, setAiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
@@ -102,6 +111,7 @@ export default function BrowserScreen() {
   const [history, setHistory] = useState<any[]>([]);
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [bookmarked, setBookmarked] = useState(false);
+  const [userScripts, setUserScripts] = useState<any[]>([]);
 
   // Modal states
   const [tabManagerVisible, setTabManagerVisible] = useState(false);
@@ -253,7 +263,7 @@ export default function BrowserScreen() {
     const id = Date.now().toString();
     const tabUrl = url || homePageUrl;
     const isHomePage = homePageService.isCustomHomePage(tabUrl);
-    
+
     return {
       id,
       url: tabUrl,
@@ -263,17 +273,18 @@ export default function BrowserScreen() {
       canGoForward: false,
       progress: 0,
       isIncognito: isIncognito || false,
+      isActive: true,
     };
   };
 
   const handleNewTab = (isIncognito: boolean = false) => {
     const newTab = createNewTab(undefined, isIncognito);
-    
+
     setTabs(prevTabs => [
       ...prevTabs.map(tab => ({ ...tab, isActive: false })),
       { ...newTab, isActive: true }
     ]);
-    
+
     setActiveTabId(newTab.id);
     setTabManagerVisible(false);
   };
@@ -445,7 +456,7 @@ export default function BrowserScreen() {
   };
 
   const handleRefresh = () => {
-    setNavigationCommand('refresh');
+    setNavigationCommand('reload');
   };
 
   const handleGoBack = () => {
@@ -674,8 +685,9 @@ export default function BrowserScreen() {
       }
 
       // Get AI response using the real AI service
-      const responseStream = await aiService.chat(
-        `Context: ${context}\n\nUser: ${message}`,
+      const responseStream = await aiService.streamResponse(
+        message,
+        context,
         aiMessages.map(msg => ({
           role: msg.role,
           content: msg.content
@@ -905,7 +917,15 @@ export default function BrowserScreen() {
   // 处理从WebView提取的资源
   const handleResourcesExtracted = (rawResources: any[]) => {
     try {
-      const processedResources = resourceSnifferService.processExtractedResources(rawResources);
+      const processedResources: ResourceItem[] = rawResources.map((resource, index) => ({
+        id: resource.id || `resource_${Date.now()}_${index}`,
+        url: resource.url,
+        type: resource.type || 'other',
+        name: resource.name || resource.url.split('/').pop() || 'unknown',
+        size: resource.size ? String(resource.size) : undefined,
+        extension: resource.extension,
+        thumbnail: resource.thumbnail,
+      }));
       setPageResources(processedResources);
       console.log(`Extracted ${processedResources.length} resources from page`);
     } catch (error) {
@@ -921,8 +941,8 @@ export default function BrowserScreen() {
         id: Date.now().toString(),
         url: resource.url,
         type: resource.type || 'unknown',
-        size: resource.size || 0,
         name: resource.name || resource.url.split('/').pop() || 'unknown',
+        size: resource.size || 0,
         createdAt: new Date().toISOString(),
       };
       setPageResources(prev => [...prev, resourceItem]);
@@ -933,24 +953,22 @@ export default function BrowserScreen() {
 
   // 触发资源提取
   const handleExtractResources = async (): Promise<ResourceItem[]> => {
-    return new Promise((resolve, reject) => {
-      // 请求WebView提取资源
-      // 这里需要一个方法来向WebView发送消息
-      // 暂时返回当前已提取的资源
-      resolve(pageResources);
-    });
+    return pageResources;
   };
 
   // 下载资源
-  const handleDownloadResource = async (resource: ResourceItem) => {
+  const handleDownloadResource = (resource: ResourceItem) => {
     try {
       if (!resourceSnifferService.isDownloadableResource(resource.url)) {
         Alert.alert('不支持的资源', '该资源类型不支持下载');
         return;
       }
 
-      const filename = resourceSnifferService.getSuggestedFilename(resource);
-      await handleDownloadRequest(resource.url, filename);
+      const filename = resourceSnifferService.getSuggestedFilename({
+        ...resource,
+        type: resource.type,
+      });
+      handleDownloadRequest(resource.url, filename);
 
       Alert.alert('开始下载', `正在下载: ${resource.name}`);
     } catch (error) {
@@ -962,7 +980,11 @@ export default function BrowserScreen() {
   // 主页快捷方式管理
   const handleUpdateHomePageShortcuts = async (shortcuts: HomePageShortcut[]) => {
     try {
-      await homePageService.updateShortcuts(shortcuts);
+      const shortcutsWithTimestamp = shortcuts.map(shortcut => ({
+        ...shortcut,
+        addedAt: shortcut.addedAt || new Date().toISOString(),
+      }));
+      await homePageService.updateShortcuts(shortcutsWithTimestamp as any);
       setHomePageShortcuts(shortcuts);
     } catch (error) {
       console.error('Failed to update homepage shortcuts:', error);
@@ -985,8 +1007,8 @@ export default function BrowserScreen() {
       // 重新加载快捷方式
       await loadHomePageSettings();
       Alert.alert('添加成功', `"${currentTab.title}" 已添加到主页`);
-    } catch (error) {
-      Alert.alert('添加失败', error.message || '无法添加到主页');
+    } catch (err: any) {
+      Alert.alert('添加失败', err?.message || '无法添加到主页');
     }
   };
 
@@ -1042,23 +1064,7 @@ export default function BrowserScreen() {
       );
     }
 
-    return (
-      <BrowserWebView
-        url={currentTab.url}
-        userScripts={userScripts}
-        onNavigationStateChange={handleNavigationStateChange}
-        onLoadStart={handleLoadStart}
-        onLoadEnd={handleLoadEnd}
-        onLoadProgress={handleLoadProgress}
-        onMessage={handleWebViewMessage}
-        onResourceSniffed={handleResourceSniffed}
-        ref={(ref) => {
-          if (ref && currentTab) {
-            webViewRef.current = ref;
-          }
-        }}
-      />
-    );
+    return null; // Remove the BrowserWebView component from renderMainContent
   };
 
   const renderQuickActions = () => (
@@ -1150,22 +1156,32 @@ export default function BrowserScreen() {
 
       {/* Address Bar */}
       <AddressBar
-        url={currentTab.url}
+        currentUrl={currentTab.url}
         isLoading={currentTab.isLoading}
         progress={currentTab.progress}
         canGoBack={currentTab.canGoBack}
         canGoForward={currentTab.canGoForward}
-        isBookmarked={bookmarked}
         onNavigate={handleNavigate}
+        onShowSuggestions={handleShowSuggestions}
+        suggestions={searchSuggestions}
         onGoBack={handleGoBack}
         onGoForward={handleGoForward}
         onRefresh={handleRefresh}
-        onBookmark={handleToggleBookmark}
-        onShare={handleShare}
-        onNewTab={handleNewTab}
+        onToggleAI={handleToggleAI}
+        aiEnabled={aiChatVisible}
+        isBookmarked={bookmarked}
+        onToggleBookmark={handleToggleBookmark}
+        onShowHistory={handleShowHistory}
+        onShowBookmarks={handleShowBookmarks}
+        onShowTabManager={() => setTabManagerVisible(true)}
+        tabCount={tabs.length}
+        isIncognito={currentTab.isIncognito}
+        onShowDownloads={() => setDownloadManagerVisible(true)}
+        downloadCount={downloads.length}
+        onUserScriptsPress={() => setShowUserScripts(true)}
         onQuickAIChat={handleQuickAIChat}
-        onResourceSniffer={handleResourceSniffed}
         aiConfigured={aiConfigured}
+        onShowResourceSniffer={() => setShowResourceSniffer(true)}
         onHome={handleNavigateToHome}
         onAddToHome={handleAddCurrentPageToHome}
         showAddToHome={currentTab.url !== homePageUrl && !homePageService.isCustomHomePage(currentTab.url)}
@@ -1254,7 +1270,10 @@ export default function BrowserScreen() {
       <DownloadManager
         isVisible={downloadManagerVisible}
         onClose={() => setDownloadManagerVisible(false)}
-        downloads={downloads}
+        downloads={downloads.map(download => ({
+          ...download,
+          downloadedSize: download.downloadedSize || 0,
+        }))}
         onPauseDownload={handlePauseDownload}
         onResumeDownload={handleResumeDownload}
         onCancelDownload={handleCancelDownload}

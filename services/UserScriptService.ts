@@ -1,4 +1,4 @@
-import { databaseService } from './DatabaseService';
+import databaseService from "./DatabaseService";
 
 export interface UserScript {
   id: string;
@@ -11,7 +11,7 @@ export interface UserScript {
   includes: string[]; // URL patterns where script should run
   excludes: string[]; // URL patterns where script should NOT run
   grants: string[]; // Permissions requested by script
-  runAt: 'document-start' | 'document-ready' | 'document-end' | 'document-idle';
+  runAt: "document-start" | "document-ready" | "document-end" | "document-idle";
   updateUrl?: string;
   downloadUrl?: string;
   homepageUrl?: string;
@@ -31,7 +31,7 @@ export interface ScriptMetadata {
   include?: string[];
   exclude?: string[];
   grant?: string[];
-  'run-at'?: string;
+  "run-at"?: string;
   updateURL?: string;
   downloadURL?: string;
   homepageURL?: string;
@@ -52,9 +52,9 @@ class UserScriptService {
   async initialize(): Promise<void> {
     try {
       await this.loadScriptsFromDB();
-      console.log('User script service initialized');
+      console.log("User script service initialized");
     } catch (error) {
-      console.error('Failed to initialize user script service:', error);
+      console.error("Failed to initialize user script service:", error);
     }
   }
 
@@ -63,14 +63,14 @@ class UserScriptService {
     try {
       const savedScripts = await databaseService.getUserScripts();
       this.scripts.clear();
-      
-      savedScripts.forEach(script => {
+
+      savedScripts.forEach((script) => {
         this.scripts.set(script.id, script);
       });
-      
+
       this.notifyListeners();
     } catch (error) {
-      console.error('Failed to load scripts from database:', error);
+      console.error("Failed to load scripts from database:", error);
     }
   }
 
@@ -78,11 +78,11 @@ class UserScriptService {
   private loadBuiltInScripts(): void {
     const builtInScripts: UserScript[] = [
       {
-        id: 'builtin-ad-blocker',
-        name: 'Simple Ad Blocker',
-        description: 'Blocks common advertisement elements',
-        author: 'VaiBrowser',
-        version: '1.0.0',
+        id: "builtin-ad-blocker",
+        name: "Simple Ad Blocker",
+        description: "Blocks common advertisement elements",
+        author: "VaiBrowser",
+        version: "1.0.0",
         enabled: true,
         code: `
 // ==UserScript==
@@ -97,7 +97,7 @@ class UserScriptService {
 
 (function() {
     'use strict';
-    
+
     // Common ad selectors
     const adSelectors = [
         '[class*="ad"]',
@@ -111,7 +111,7 @@ class UserScriptService {
         'iframe[src*="googleads"]',
         'iframe[src*="googlesyndication"]'
     ];
-    
+
     function removeAds() {
         adSelectors.forEach(selector => {
             try {
@@ -127,36 +127,36 @@ class UserScriptService {
             }
         });
     }
-    
+
     // Run immediately and observe for new elements
     removeAds();
-    
+
     // Observer for dynamically added content
     const observer = new MutationObserver(() => {
         removeAds();
     });
-    
+
     observer.observe(document.body, {
         childList: true,
         subtree: true
     });
 })();
         `,
-        includes: ['*'],
+        includes: ["*"],
         excludes: [],
-        grants: ['none'],
-        runAt: 'document-ready',
+        grants: ["none"],
+        runAt: "document-ready",
         installTime: new Date().toISOString(),
         runCount: 0,
         isBuiltIn: true,
-        icon: '🚫',
+        icon: "🚫",
       },
       {
-        id: 'builtin-dark-mode',
-        name: 'Dark Mode Toggle',
-        description: 'Adds dark mode support to websites',
-        author: 'VaiBrowser',
-        version: '1.0.0',
+        id: "builtin-dark-mode",
+        name: "Dark Mode Toggle",
+        description: "Adds dark mode support to websites",
+        author: "VaiBrowser",
+        version: "1.0.0",
         enabled: false,
         code: `
 // ==UserScript==
@@ -171,7 +171,7 @@ class UserScriptService {
 
 (function() {
     'use strict';
-    
+
     // Create dark mode toggle button
     const toggleButton = document.createElement('div');
     toggleButton.innerHTML = '🌙';
@@ -194,17 +194,17 @@ class UserScriptService {
         box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         transition: all 0.3s ease;
     \`;
-    
+
     let isDarkMode = false;
-    
+
     function toggleDarkMode() {
         isDarkMode = !isDarkMode;
-        
+
         if (isDarkMode) {
             document.documentElement.style.filter = 'invert(1) hue-rotate(180deg)';
             document.documentElement.style.background = '#111';
             toggleButton.innerHTML = '☀️';
-            
+
             // Fix images and videos
             const media = document.querySelectorAll('img, video, iframe, svg');
             media.forEach(el => {
@@ -214,33 +214,33 @@ class UserScriptService {
             document.documentElement.style.filter = '';
             document.documentElement.style.background = '';
             toggleButton.innerHTML = '🌙';
-            
+
             const media = document.querySelectorAll('img, video, iframe, svg');
             media.forEach(el => {
                 el.style.filter = '';
             });
         }
     }
-    
+
     toggleButton.addEventListener('click', toggleDarkMode);
     document.body.appendChild(toggleButton);
 })();
         `,
-        includes: ['*'],
+        includes: ["*"],
         excludes: [],
-        grants: ['none'],
-        runAt: 'document-ready',
+        grants: ["none"],
+        runAt: "document-ready",
         installTime: new Date().toISOString(),
         runCount: 0,
         isBuiltIn: true,
-        icon: '🌙',
+        icon: "🌙",
       },
       {
-        id: 'builtin-auto-scroll',
-        name: 'Auto Scroll',
-        description: 'Automatically scrolls page content',
-        author: 'VaiBrowser',
-        version: '1.0.0',
+        id: "builtin-auto-scroll",
+        name: "Auto Scroll",
+        description: "Automatically scrolls page content",
+        author: "VaiBrowser",
+        version: "1.0.0",
         enabled: false,
         code: `
 // ==UserScript==
@@ -255,11 +255,11 @@ class UserScriptService {
 
 (function() {
     'use strict';
-    
+
     let isAutoScrolling = false;
     let scrollInterval;
     let scrollSpeed = 2; // pixels per interval
-    
+
     // Create control panel
     const controlPanel = document.createElement('div');
     controlPanel.style.cssText = \`
@@ -278,7 +278,7 @@ class UserScriptService {
         gap: 5px;
         min-width: 150px;
     \`;
-    
+
     const toggleButton = document.createElement('button');
     toggleButton.textContent = 'Start Auto Scroll';
     toggleButton.style.cssText = \`
@@ -289,34 +289,34 @@ class UserScriptService {
         border-radius: 5px;
         cursor: pointer;
     \`;
-    
+
     const speedSlider = document.createElement('input');
     speedSlider.type = 'range';
     speedSlider.min = '1';
     speedSlider.max = '10';
     speedSlider.value = '2';
     speedSlider.style.width = '100%';
-    
+
     const speedLabel = document.createElement('div');
     speedLabel.textContent = 'Speed: 2';
     speedLabel.style.textAlign = 'center';
-    
+
     function startAutoScroll() {
         if (scrollInterval) clearInterval(scrollInterval);
         scrollInterval = setInterval(() => {
             window.scrollBy(0, scrollSpeed);
-            
+
             // Stop if reached bottom
             if (window.innerHeight + window.scrollY >= document.body.offsetHeight) {
                 stopAutoScroll();
             }
         }, 50);
-        
+
         isAutoScrolling = true;
         toggleButton.textContent = 'Stop Auto Scroll';
         toggleButton.style.background = '#FF3B30';
     }
-    
+
     function stopAutoScroll() {
         if (scrollInterval) {
             clearInterval(scrollInterval);
@@ -326,7 +326,7 @@ class UserScriptService {
         toggleButton.textContent = 'Start Auto Scroll';
         toggleButton.style.background = '#007AFF';
     }
-    
+
     toggleButton.addEventListener('click', () => {
         if (isAutoScrolling) {
             stopAutoScroll();
@@ -334,31 +334,31 @@ class UserScriptService {
             startAutoScroll();
         }
     });
-    
+
     speedSlider.addEventListener('input', (e) => {
         scrollSpeed = parseInt(e.target.value);
         speedLabel.textContent = \`Speed: \${scrollSpeed}\`;
     });
-    
+
     controlPanel.appendChild(toggleButton);
     controlPanel.appendChild(speedLabel);
     controlPanel.appendChild(speedSlider);
-    
+
     document.body.appendChild(controlPanel);
 })();
         `,
-        includes: ['*'],
+        includes: ["*"],
         excludes: [],
-        grants: ['none'],
-        runAt: 'document-ready',
+        grants: ["none"],
+        runAt: "document-ready",
         installTime: new Date().toISOString(),
         runCount: 0,
         isBuiltIn: true,
-        icon: '📜',
+        icon: "📜",
       },
     ];
 
-    builtInScripts.forEach(script => {
+    builtInScripts.forEach((script) => {
       this.scripts.set(script.id, script);
     });
   }
@@ -366,67 +366,67 @@ class UserScriptService {
   // Parse user script metadata
   parseScriptMetadata(code: string): ScriptMetadata {
     const metadata: ScriptMetadata = {};
-    const lines = code.split('\n');
+    const lines = code.split("\n");
     let inMetadataBlock = false;
 
     for (const line of lines) {
       const trimmed = line.trim();
-      
-      if (trimmed === '// ==UserScript==') {
+
+      if (trimmed === "// ==UserScript==") {
         inMetadataBlock = true;
         continue;
       }
-      
-      if (trimmed === '// ==/UserScript==') {
+
+      if (trimmed === "// ==/UserScript==") {
         break;
       }
-      
-      if (inMetadataBlock && trimmed.startsWith('// @')) {
+
+      if (inMetadataBlock && trimmed.startsWith("// @")) {
         const match = trimmed.match(/^\/\/ @(\w+)\s+(.+)$/);
         if (match) {
           const [, key, value] = match;
-          
+
           switch (key) {
-            case 'name':
+            case "name":
               metadata.name = value;
               break;
-            case 'description':
+            case "description":
               metadata.description = value;
               break;
-            case 'author':
+            case "author":
               metadata.author = value;
               break;
-            case 'version':
+            case "version":
               metadata.version = value;
               break;
-            case 'include':
+            case "include":
               if (!metadata.include) metadata.include = [];
               metadata.include.push(value);
               break;
-            case 'exclude':
+            case "exclude":
               if (!metadata.exclude) metadata.exclude = [];
               metadata.exclude.push(value);
               break;
-            case 'grant':
+            case "grant":
               if (!metadata.grant) metadata.grant = [];
               metadata.grant.push(value);
               break;
-            case 'run-at':
-              metadata['run-at'] = value as any;
+            case "run-at":
+              metadata["run-at"] = value as any;
               break;
-            case 'updateURL':
+            case "updateURL":
               metadata.updateURL = value;
               break;
-            case 'downloadURL':
+            case "downloadURL":
               metadata.downloadURL = value;
               break;
-            case 'homepageURL':
+            case "homepageURL":
               metadata.homepageURL = value;
               break;
-            case 'supportURL':
+            case "supportURL":
               metadata.supportURL = value;
               break;
-            case 'icon':
+            case "icon":
               metadata.icon = value;
               break;
           }
@@ -440,23 +440,23 @@ class UserScriptService {
   // Install script from code
   async installScript(code: string): Promise<UserScript> {
     const metadata = this.parseScriptMetadata(code);
-    
+
     if (!metadata.name) {
-      throw new Error('Script must have a name');
+      throw new Error("Script must have a name");
     }
 
     const script: UserScript = {
       id: Date.now().toString(),
       name: metadata.name,
-      description: metadata.description || 'No description',
-      author: metadata.author || 'Unknown',
-      version: metadata.version || '1.0.0',
+      description: metadata.description || "No description",
+      author: metadata.author || "Unknown",
+      version: metadata.version || "1.0.0",
       enabled: true,
       code,
-      includes: metadata.include || ['*'],
+      includes: metadata.include || ["*"],
       excludes: metadata.exclude || [],
-      grants: metadata.grant || ['none'],
-      runAt: (metadata['run-at'] as any) || 'document-ready',
+      grants: metadata.grant || ["none"],
+      runAt: (metadata["run-at"] as any) || "document-ready",
       updateUrl: metadata.updateURL,
       downloadUrl: metadata.downloadURL,
       homepageUrl: metadata.homepageURL,
@@ -476,8 +476,8 @@ class UserScriptService {
 
   // Get all scripts
   getScripts(): UserScript[] {
-    return Array.from(this.scripts.values()).sort((a, b) => 
-      a.name.localeCompare(b.name)
+    return Array.from(this.scripts.values()).sort((a, b) =>
+      a.name.localeCompare(b.name),
     );
   }
 
@@ -493,11 +493,11 @@ class UserScriptService {
 
     script.enabled = enabled;
     this.scripts.set(id, script);
-    
+
     if (!script.isBuiltIn) {
       await databaseService.saveUserScript(script);
     }
-    
+
     this.notifyListeners();
   }
 
@@ -508,7 +508,7 @@ class UserScriptService {
 
     const updatedScript = { ...script, ...updates };
     this.scripts.set(id, updatedScript);
-    
+
     await databaseService.saveUserScript(updatedScript);
     this.notifyListeners();
   }
@@ -528,29 +528,29 @@ class UserScriptService {
     if (!script.enabled) return false;
 
     // Check includes
-    const includeMatch = script.includes.some(pattern => 
-      this.matchPattern(pattern, url)
+    const includeMatch = script.includes.some((pattern) =>
+      this.matchPattern(pattern, url),
     );
-    
+
     if (!includeMatch) return false;
 
     // Check excludes
-    const excludeMatch = script.excludes.some(pattern => 
-      this.matchPattern(pattern, url)
+    const excludeMatch = script.excludes.some((pattern) =>
+      this.matchPattern(pattern, url),
     );
-    
+
     return !excludeMatch;
   }
 
   // Pattern matching for URLs
   private matchPattern(pattern: string, url: string): boolean {
-    if (pattern === '*') return true;
-    
+    if (pattern === "*") return true;
+
     // Convert wildcard pattern to regex
     const regexPattern = pattern
-      .replace(/[.*+?^${}()|[\]\\]/g, '\\$&') // Escape special chars
-      .replace(/\\\*/g, '.*'); // Convert * to .*
-    
+      .replace(/[.*+?^${}()|[\]\\]/g, "\\$&") // Escape special chars
+      .replace(/\\\*/g, ".*"); // Convert * to .*
+
     try {
       return new RegExp(`^${regexPattern}$`).test(url);
     } catch {
@@ -560,8 +560,8 @@ class UserScriptService {
 
   // Get scripts for URL
   getScriptsForUrl(url: string): UserScript[] {
-    return this.getScripts().filter(script => 
-      this.shouldRunScript(script, url)
+    return this.getScripts().filter((script) =>
+      this.shouldRunScript(script, url),
     );
   }
 
@@ -577,7 +577,7 @@ class UserScriptService {
         if (!script.isBuiltIn) {
           await databaseService.saveUserScript(script);
         }
-        
+
         injectedScriptIds.push(script.id);
         console.log(`Injected script: ${script.name} into tab ${tabId}`);
       } catch (error) {
@@ -602,8 +602,8 @@ class UserScriptService {
   // Export script
   exportScript(id: string): string {
     const script = this.scripts.get(id);
-    if (!script) return '';
-    
+    if (!script) return "";
+
     return script.code;
   }
 
@@ -627,13 +627,13 @@ class UserScriptService {
     userScripts: number;
   } {
     const scripts = this.getScripts();
-    
+
     return {
       totalScripts: scripts.length,
-      enabledScripts: scripts.filter(s => s.enabled).length,
+      enabledScripts: scripts.filter((s) => s.enabled).length,
       totalRuns: scripts.reduce((sum, s) => sum + s.runCount, 0),
-      builtInScripts: scripts.filter(s => s.isBuiltIn).length,
-      userScripts: scripts.filter(s => !s.isBuiltIn).length,
+      builtInScripts: scripts.filter((s) => s.isBuiltIn).length,
+      userScripts: scripts.filter((s) => !s.isBuiltIn).length,
     };
   }
 
@@ -652,15 +652,16 @@ class UserScriptService {
   // Notify all listeners
   private notifyListeners(): void {
     const scripts = this.getScripts();
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener(scripts);
       } catch (error) {
-        console.error('Script listener error:', error);
+        console.error("Script listener error:", error);
       }
     });
   }
 }
 
 // Export singleton instance
-export const userScriptService = new UserScriptService(); 
+export const userScriptService = new UserScriptService();
+

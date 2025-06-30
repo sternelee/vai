@@ -5,15 +5,18 @@ VaiBrowser is an intelligent mobile browser that combines the lightweight effici
 ## 🚀 Core Features
 
 ### 🤖 Multi-AI Provider Support
+
 - **8 Major AI Providers**: OpenAI, Anthropic, Google, Groq, DeepSeek, Mistral, xAI Grok, Cerebras
 - **20+ Model Options**: GPT-4o, Claude 3.5, Gemini 2.0, LLaMA 3.3, and more
 - **Intelligent Configuration**: API key management, custom headers, provider testing
 - **Real-time Status**: Live AI provider status in browser interface
 
 ### 🔧 MCP Tools Integration (NEW!)
+
 **Model Context Protocol** support allows AI to access external tools and services through standardized interfaces:
 
-#### Key Features:
+#### Key Features
+
 - **SSE Transport Protocol**: HTTP-based real-time communication with MCP servers
 - **Multiple Server Support**: Connect to unlimited MCP servers simultaneously
 - **Tool Discovery**: Automatic discovery and registration of available tools
@@ -21,11 +24,12 @@ VaiBrowser is an intelligent mobile browser that combines the lightweight effici
 - **Connection Management**: Real-time status monitoring and error handling
 - **Authentication Support**: Custom headers for API keys and authentication
 
-#### Built-in Demo Servers:
+#### Built-in Demo Servers
+
 1. **Weather Server** (Mock)
    - `get_weather`: Get current weather for any location
    - `get_forecast`: 5-day weather forecast
-   
+
 2. **GitHub Server** (Mock)
    - `search_repositories`: Search GitHub repositories
    - `create_issue`: Create new GitHub issues
@@ -33,7 +37,8 @@ VaiBrowser is an intelligent mobile browser that combines the lightweight effici
 3. **Custom Tools Server**
    - Extensible for business-specific tools
 
-#### MCP Architecture:
+#### MCP Architecture
+
 ```
 AI Assistant <-> VaiBrowser <-> MCP Service <-> External MCP Servers
                                      |
@@ -42,25 +47,29 @@ AI Assistant <-> VaiBrowser <-> MCP Service <-> External MCP Servers
                               └─────────────┴─────────────┴─────────────┘
 ```
 
-#### Configuration Interface:
+#### Configuration Interface
+
 - **Three-tab Management**: Servers, Tools, Add Server
 - **Connection Testing**: Verify server connectivity before saving
 - **Statistics Dashboard**: Real-time server and tool metrics
 - **Error Handling**: Detailed error messages and recovery suggestions
 
 ### 🚀 Performance Optimization System
+
 - **Real-time Monitoring**: Memory usage, load times, tab management
 - **Intelligent Cache Management**: LRU algorithm with automatic eviction
 - **Memory Threshold Control**: 150MB limit with auto-cleanup
 - **Performance Metrics**: 5-second interval monitoring
 
 ### 🐒 User Script System (Tampermonkey/Greasemonkey Compatible)
+
 - **Full UserScript Engine**: Support for standard Greasemonkey format
 - **Built-in Script Library**: Ad blocker, dark mode, auto-scroll
 - **Script Editor**: Write and test scripts directly in browser
 - **URL Pattern Matching**: Precise script execution control
 
 ### 🌐 Advanced Browser Features
+
 - **Multi-tab Management**: Up to 10 tabs with incognito support
 - **Smart Address Bar**: AI-powered search suggestions
 - **Download Manager**: Comprehensive file download handling
@@ -75,11 +84,11 @@ class MCPService {
   // Server Management
   async connectToServer(serverId: string): Promise<boolean>
   async disconnectFromServer(serverId: string): Promise<void>
-  
+
   // Tool Management
   async getAvailableTools(): Promise<Record<string, any>>
   async executeTool(serverId: string, toolName: string, parameters: any): Promise<any>
-  
+
   // Configuration
   async addServer(config: MCPServerConfig): Promise<void>
   async testServerConnection(config: MCPServerConfig): Promise<TestResult>
@@ -113,6 +122,7 @@ const result = await streamText({
 ## 📱 User Interface
 
 ### MCP Manager Interface
+
 1. **Servers Tab**: View and manage all MCP servers
    - Connection status (Connected/Connecting/Error/Disconnected)
    - Tool count per server
@@ -132,6 +142,7 @@ const result = await streamText({
    - Auto-enable option
 
 ### Settings Integration
+
 - **MCP Tools Section**: Dedicated configuration area
 - **Status Indicators**: Real-time connection status
 - **Statistics Display**: Server count, tool count, connection status
@@ -140,12 +151,14 @@ const result = await streamText({
 ## 🔧 Development Features
 
 ### Debug & Monitoring
+
 - **Console Logging**: Detailed MCP operation logs
 - **Error Tracking**: Connection failures and recovery
 - **Performance Metrics**: Tool execution times
 - **Status Broadcasting**: Real-time UI updates
 
 ### Extensibility
+
 - **Plugin Architecture**: Easy addition of new MCP servers
 - **Tool Templates**: Standard tool implementation patterns
 - **Custom Transports**: Support for future MCP transport protocols
@@ -154,6 +167,7 @@ const result = await streamText({
 ## 🚀 Getting Started with MCP
 
 ### 1. Configure MCP Server
+
 ```typescript
 const serverConfig = {
   name: "My Weather Server",
@@ -167,14 +181,18 @@ const serverConfig = {
 ```
 
 ### 2. Test Connection
+
 The built-in connection tester validates:
+
 - Server connectivity
 - Tool discovery
 - Authentication
 - Response format
 
 ### 3. Use in AI Chat
+
 Once configured, MCP tools are automatically available to AI:
+
 ```
 User: "What's the weather in Tokyo?"
 AI: *Uses MCP weather tool* "Let me check the current weather in Tokyo..."
@@ -182,13 +200,15 @@ AI: *Uses MCP weather tool* "Let me check the current weather in Tokyo..."
 
 ## 🎯 Benefits
 
-### For Users:
+### For Users
+
 - **Extended AI Capabilities**: Access to real-world data and services
 - **Seamless Integration**: Tools work transparently with AI chat
 - **Privacy Control**: Local tool management and authentication
 - **Performance Monitoring**: Real-time system status
 
-### For Developers:
+### For Developers
+
 - **Standard Protocol**: MCP compliance ensures compatibility
 - **Easy Integration**: Simple server configuration
 - **Scalable Architecture**: Support for unlimited tools
@@ -196,13 +216,15 @@ AI: *Uses MCP weather tool* "Let me check the current weather in Tokyo..."
 
 ## 🔮 Future Roadmap
 
-### MCP Enhancements:
+### MCP Enhancements
+
 - **AI SDK 5 Beta Integration**: Full official MCP support when available
 - **Stdio Transport**: Local tool server support
 - **Tool Marketplace**: Discoverable public MCP servers
 - **Custom Tool Builder**: Visual tool creation interface
 
-### Advanced Features:
+### Advanced Features
+
 - **Multi-modal MCP Tools**: Image and file processing tools
 - **Workflow Automation**: Chain multiple MCP tools together
 - **Enterprise Integration**: Corporate MCP server support
@@ -218,6 +240,7 @@ AI: *Uses MCP weather tool* "Let me check the current weather in Tokyo..."
 ## 🏆 Achievement Unlocked
 
 VaiBrowser now supports the **complete AI ecosystem**:
+
 - ✅ **Multi-AI Providers** (8 providers, 20+ models)
 - ✅ **Performance Optimization** (Advanced monitoring)
 - ✅ **User Scripts** (Tampermonkey compatible)

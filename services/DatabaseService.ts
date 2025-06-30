@@ -807,4 +807,4 @@ class DatabaseService {
   }
 }
 
-xport default new DatabaseService();
+export default new DatabaseService();
