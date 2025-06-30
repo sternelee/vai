@@ -1,18 +1,18 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
 import React, { useEffect, useState } from 'react';
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    SafeAreaView,
-    ScrollView,
-    StatusBar,
-    StyleSheet,
-    Switch,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  Modal,
+  SafeAreaView,
+  ScrollView,
+  StatusBar,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import { MCPServer, MCPServerConfig, mcpService } from '../../services/MCPService';
 
@@ -84,15 +84,6 @@ export default function MCPManager({ visible, onClose }: MCPManagerProps) {
       // State will be updated through listener
     } catch (error) {
       Alert.alert('Error', `Failed to toggle server: ${error}`);
-    }
-  };
-
-  const handleToggleTool = async (serverId: string, toolName: string) => {
-    try {
-      await mcpService.toggleTool(serverId, toolName);
-      // State will be updated through listener
-    } catch (error) {
-      Alert.alert('Error', `Failed to toggle tool: ${error}`);
     }
   };
 
@@ -267,7 +258,7 @@ export default function MCPManager({ visible, onClose }: MCPManagerProps) {
       {server.tools && server.tools.length > 0 && (
         <View style={styles.toolsContainer}>
           <Text style={[styles.toolsTitle, isDark && styles.textDark]}>
-            Tools ({server.tools.filter(t => t.enabled).length}/{server.tools.length})
+            Tools ({server.tools.length})
           </Text>
           {server.tools.map(tool => (
             <View key={tool.name} style={styles.toolItem}>
@@ -277,13 +268,6 @@ export default function MCPManager({ visible, onClose }: MCPManagerProps) {
                   {tool.description}
                 </Text>
               </View>
-              <Switch
-                value={tool.enabled}
-                onValueChange={() => handleToggleTool(server.id, tool.name)}
-                trackColor={{ false: '#767577', true: '#007AFF' }}
-                thumbColor={tool.enabled ? '#FFFFFF' : '#f4f3f4'}
-                style={styles.toolSwitch}
-              />
             </View>
           ))}
         </View>
@@ -371,9 +355,6 @@ export default function MCPManager({ visible, onClose }: MCPManagerProps) {
                   <View key={tool.name} style={styles.toolDetailItem}>
                     <View style={styles.toolDetailHeader}>
                       <Text style={[styles.toolDetailName, isDark && styles.textDark]}>{tool.name}</Text>
-                      <View style={styles.toolEnabledBadge}>
-                        <Text style={styles.toolEnabledText}>✓</Text>
-                      </View>
                     </View>
                     <Text style={[styles.toolDetailDescription, isDark && styles.textSecondaryDark]}>
                       {tool.description}

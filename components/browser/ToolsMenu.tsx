@@ -3,12 +3,12 @@ import { useColorScheme } from '@/hooks/useColorScheme';
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import BottomSheet from '../ui/BottomSheet';
 
@@ -277,29 +277,29 @@ export default function ToolsMenu({
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
+  } as const,
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
     paddingBottom: ArcTheme.spacing.lg,
     marginBottom: ArcTheme.spacing.base,
-  },
+  } as const,
   headerContent: {
     flex: 1,
     paddingRight: ArcTheme.spacing.base,
-  },
+  } as const,
   title: {
     fontSize: ArcTheme.typography.fontSize['2xl'],
-    fontWeight: ArcTheme.typography.fontWeight.bold,
+    fontWeight: '700' as const,
     marginBottom: ArcTheme.spacing.xs,
     lineHeight: ArcTheme.typography.lineHeight.tight * ArcTheme.typography.fontSize['2xl'],
-  },
+  } as const,
   subtitle: {
     fontSize: ArcTheme.typography.fontSize.base,
-    fontWeight: ArcTheme.typography.fontWeight.normal,
+    fontWeight: '400' as const,
     lineHeight: ArcTheme.typography.lineHeight.normal * ArcTheme.typography.fontSize.base,
-  },
+  } as const,
   closeButton: {
     width: 32,
     height: 32,
@@ -308,35 +308,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     ...ArcTheme.shadows.sm,
-  },
+  } as const,
   scrollView: {
     flex: 1,
-  },
+  } as const,
   scrollContent: {
     paddingBottom: ArcTheme.spacing.xl,
-  },
+  } as const,
   toolGroup: {
     marginBottom: ArcTheme.spacing.xl,
-  },
+  } as const,
   groupTitle: {
     fontSize: ArcTheme.typography.fontSize.lg,
-    fontWeight: ArcTheme.typography.fontWeight.semibold,
+    fontWeight: '600' as const,
     marginBottom: ArcTheme.spacing.base,
     paddingHorizontal: ArcTheme.spacing.xs,
-  },
+  } as const,
   groupContent: {
     gap: ArcTheme.spacing.sm,
-  },
+  } as const,
   toolItem: {
     borderRadius: ArcTheme.borderRadius.lg,
     borderWidth: 1,
     overflow: 'hidden',
-  },
+  } as const,
   toolItemContent: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: ArcTheme.spacing.base,
-  },
+  } as const,
   toolIcon: {
     width: 48,
     height: 48,
@@ -345,27 +345,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: ArcTheme.spacing.base,
-  },
+  } as const,
   toolInfo: {
     flex: 1,
     marginRight: ArcTheme.spacing.sm,
-  },
+  } as const,
   toolTitleRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: ArcTheme.spacing.xs,
-  },
+  } as const,
   toolTitle: {
     fontSize: ArcTheme.typography.fontSize.base,
-    fontWeight: ArcTheme.typography.fontWeight.semibold,
+    fontWeight: '600' as const,
     flex: 1,
     lineHeight: ArcTheme.typography.lineHeight.tight * ArcTheme.typography.fontSize.base,
-  },
+  } as const,
   toolSubtitle: {
     fontSize: ArcTheme.typography.fontSize.sm,
-    fontWeight: ArcTheme.typography.fontWeight.normal,
+    fontWeight: '400' as const,
     lineHeight: ArcTheme.typography.lineHeight.normal * ArcTheme.typography.fontSize.sm,
-  },
+  } as const,
   badge: {
     paddingHorizontal: ArcTheme.spacing.sm,
     paddingVertical: ArcTheme.spacing.xs,
@@ -373,19 +373,19 @@ const styles = StyleSheet.create({
     marginLeft: ArcTheme.spacing.sm,
     minWidth: 20,
     alignItems: 'center',
-  },
+  } as const,
   badgeText: {
     color: '#FFFFFF',
     fontSize: ArcTheme.typography.fontSize.xs,
-    fontWeight: ArcTheme.typography.fontWeight.semibold,
-  },
+    fontWeight: '600' as const,
+  } as const,
   chevronContainer: {
     padding: ArcTheme.spacing.xs,
-  },
+  } as const,
   footer: {
     marginTop: ArcTheme.spacing.lg,
     alignItems: 'center',
-  },
+  } as const,
   footerHint: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -393,12 +393,12 @@ const styles = StyleSheet.create({
     paddingVertical: ArcTheme.spacing.sm,
     borderRadius: ArcTheme.borderRadius.full,
     borderWidth: 1,
-  },
+  } as const,
   hintIcon: {
     marginRight: ArcTheme.spacing.xs,
-  },
+  } as const,
   footerText: {
     fontSize: ArcTheme.typography.fontSize.sm,
-    fontWeight: ArcTheme.typography.fontWeight.normal,
-  },
+    fontWeight: '400' as const,
+  } as const,
 });

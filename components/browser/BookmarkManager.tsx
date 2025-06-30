@@ -1,17 +1,17 @@
 import { useColorScheme } from '@/hooks/useColorScheme';
-import { BookmarkItem, databaseService } from '@/services/DatabaseService';
+import databaseService, { BookmarkItem } from '@/services/DatabaseService';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
-    Alert,
-    FlatList,
-    Image,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Alert,
+  FlatList,
+  Image,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Modal from 'react-native-modal';
 
@@ -212,7 +212,7 @@ export default function BookmarkManager({
     <View
       style={[
         styles.bookmarkItem,
-        { 
+        {
           backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
           borderBottomColor: isDark ? '#2C2C2E' : '#E5E5EA',
         }
@@ -240,7 +240,7 @@ export default function BookmarkManager({
               />
             )}
           </View>
-          
+
           <View style={styles.textContent}>
             <Text
               style={[
@@ -283,7 +283,7 @@ export default function BookmarkManager({
             color="#007AFF"
           />
         </TouchableOpacity>
-        
+
         <TouchableOpacity
           style={styles.actionButton}
           onPress={() => deleteBookmark(item)}
@@ -304,8 +304,8 @@ export default function BookmarkManager({
       style={[
         styles.folderTab,
         {
-          backgroundColor: selectedFolder === folder 
-            ? '#007AFF' 
+          backgroundColor: selectedFolder === folder
+            ? '#007AFF'
             : (isDark ? '#2C2C2E' : '#F2F2F7'),
         }
       ]}
@@ -315,8 +315,8 @@ export default function BookmarkManager({
         style={[
           styles.folderTabText,
           {
-            color: selectedFolder === folder 
-              ? '#FFFFFF' 
+            color: selectedFolder === folder
+              ? '#FFFFFF'
               : (isDark ? '#FFFFFF' : '#000000'),
           }
         ]}
@@ -338,7 +338,7 @@ export default function BookmarkManager({
         {searchQuery ? 'No Results Found' : 'No Bookmarks Yet'}
       </Text>
       <Text style={[styles.emptyMessage, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
-        {searchQuery 
+        {searchQuery
           ? 'Try adjusting your search terms'
           : 'Your saved bookmarks will appear here'
         }
@@ -442,7 +442,7 @@ export default function BookmarkManager({
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
-          
+
           <TouchableOpacity
             style={[styles.dialogButton, styles.saveButton]}
             onPress={saveBookmark}
@@ -478,7 +478,7 @@ export default function BookmarkManager({
             { borderBottomColor: isDark ? '#2C2C2E' : '#E5E5EA' }
           ]}>
             <View style={styles.handleBar} />
-            
+
             <View style={styles.headerContent}>
               <View style={styles.headerLeft}>
                 <Ionicons name="bookmark" size={24} color="#007AFF" />
@@ -489,7 +489,7 @@ export default function BookmarkManager({
                   Bookmarks
                 </Text>
               </View>
-              
+
               <View style={styles.headerRight}>
                 <TouchableOpacity
                   style={styles.headerButton}
@@ -497,7 +497,7 @@ export default function BookmarkManager({
                 >
                   <Ionicons name="add" size={24} color="#007AFF" />
                 </TouchableOpacity>
-                
+
                 <TouchableOpacity
                   style={styles.headerButton}
                   onPress={onClose}
@@ -845,4 +845,4 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
   },
-}); 
+});

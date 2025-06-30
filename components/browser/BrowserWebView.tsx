@@ -16,6 +16,7 @@ interface BrowserWebViewProps {
   onLoadEnd: (tabId: string, url: string, title: string) => void;
   onError: (tabId: string, error: any) => void;
   onMessage: (tabId: string, message: any) => void;
+  onScroll?: (tabId: string, scrollY: number) => void;
   navigationCommand?: "back" | "forward" | "reload" | null;
   onNavigationCommandExecuted?: () => void;
 }
@@ -30,6 +31,7 @@ export default function BrowserWebView({
   onLoadEnd,
   onError,
   onMessage,
+  onScroll,
   navigationCommand,
   onNavigationCommandExecuted,
 }: BrowserWebViewProps) {
@@ -138,6 +140,12 @@ export default function BrowserWebView({
   const handleMessage = (event: any) => {
     try {
       const data = JSON.parse(event.nativeEvent.data);
+
+      // Handle scroll events for bottom navigation bar
+      if (data.type === 'scroll' && onScroll) {
+        onScroll(tabId, data.scrollY);
+      }
+
       onMessage(tabId, data);
     } catch (error) {
       console.error("Failed to parse WebView message:", error);
@@ -300,6 +308,36 @@ export default function BrowserWebView({
             }));
           }
         });
+
+        // Scroll tracking for bottom navigation bar
+        let lastScrollY = 0;
+        let scrollTimeout;
+
+        function handleScroll() {
+          const scrollY = window.pageYOffset || document.documentElement.scrollTop;
+
+          // Only report significant scroll changes
+          if (Math.abs(scrollY - lastScrollY) > 5) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'scroll',
+              scrollY: scrollY,
+              scrollDirection: scrollY > lastScrollY ? 'down' : 'up'
+            }));
+            lastScrollY = scrollY;
+          }
+
+          // Debounce scroll events
+          clearTimeout(scrollTimeout);
+          scrollTimeout = setTimeout(() => {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'scroll_end',
+              scrollY: scrollY
+            }));
+          }, 150);
+        }
+
+        // Add scroll listener with passive option for better performance
+        window.addEventListener('scroll', handleScroll, { passive: true });
 
         // Page content extraction for AI
         function extractPageContent() {

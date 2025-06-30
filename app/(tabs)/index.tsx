@@ -8,6 +8,7 @@ import { WebView } from 'react-native-webview';
 import AddressBar from '@/components/browser/AddressBar';
 import AIChatPanel from '@/components/browser/AIChatPanel';
 import BookmarkManager from '@/components/browser/BookmarkManager';
+import BottomNavigationBar from '@/components/browser/BottomNavigationBar';
 import BrowserWebView from '@/components/browser/BrowserWebView';
 import DownloadManager from '@/components/browser/DownloadManager';
 import HistoryManager from '@/components/browser/HistoryManager';
@@ -113,6 +114,11 @@ export default function BrowserScreen() {
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [bookmarked, setBookmarked] = useState(false);
   const [userScripts, setUserScripts] = useState<any[]>([]);
+
+  // Bottom Navigation Bar state
+  const [bottomNavVisible, setBottomNavVisible] = useState(true);
+  const lastScrollY = useRef(0);
+  const scrollTimeout = useRef<number | null>(null);
 
   // Modal states
   const [tabManagerVisible, setTabManagerVisible] = useState(false);
@@ -1041,6 +1047,42 @@ export default function BrowserScreen() {
     }
   };
 
+  // Bottom Navigation Bar handlers
+  const handleBottomNavVisibilityChange = (visible: boolean) => {
+    setBottomNavVisible(visible);
+  };
+
+  const handleWebViewScroll = (tabId: string, scrollY: number) => {
+    const scrollDiff = scrollY - lastScrollY.current;
+    const isScrollingUp = scrollDiff < 0;
+    const isScrollingDown = scrollDiff > 0;
+
+    // Clear existing timeout
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+
+    // Only hide/show if scrolling significantly
+    if (Math.abs(scrollDiff) > 10) {
+      if (isScrollingDown && bottomNavVisible) {
+        // Hide navbar when scrolling down
+        setBottomNavVisible(false);
+      } else if (isScrollingUp && !bottomNavVisible) {
+        // Show navbar when scrolling up
+        setBottomNavVisible(true);
+      }
+    }
+
+    // Auto-show navbar after user stops scrolling
+    scrollTimeout.current = setTimeout(() => {
+      if (!bottomNavVisible) {
+        setBottomNavVisible(true);
+      }
+    }, 2000);
+
+    lastScrollY.current = scrollY;
+  };
+
   // 工具菜单配置
   const getToolsMenuItems = () => {
     const mcpStats = mcpService.getStatistics();
@@ -1337,6 +1379,7 @@ export default function BrowserScreen() {
               onLoadEnd={handleLoadEnd}
               onError={handleError}
               onMessage={handleWebViewMessage}
+              onScroll={handleWebViewScroll}
               navigationCommand={tab.id === activeTabId ? navigationCommand : null}
               onNavigationCommandExecuted={handleNavigationCommandExecuted}
             />
@@ -1353,6 +1396,21 @@ export default function BrowserScreen() {
         onNewTab={() => handleNewTab(false)}
         onShowTabManager={() => setTabManagerVisible(true)}
         isVisible={tabs.length > 1}
+      />
+
+      {/* Bottom Navigation Bar */}
+      <BottomNavigationBar
+        visible={bottomNavVisible}
+        onVisibilityChange={handleBottomNavVisibilityChange}
+        onGoBack={handleGoBack}
+        onGoForward={handleGoForward}
+        onGoHome={handleNavigateToHome}
+        onShowTabManager={() => setTabManagerVisible(true)}
+        onShowMenu={() => setShowToolsMenu(true)}
+        canGoBack={currentTab?.canGoBack || false}
+        canGoForward={currentTab?.canGoForward || false}
+        tabCount={tabs.length}
+        isIncognito={currentTab?.isIncognito}
       />
 
       {/* Tools Menu */}
