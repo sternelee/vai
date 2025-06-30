@@ -43,7 +43,6 @@
           "backgroundColor": "#ffffff"
         }
       ],
-      "expo-sqlite",
       "expo-secure-store"
     ],
     "experiments": {

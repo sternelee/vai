@@ -1,5 +1,8 @@
-import * as SQLite from 'expo-sqlite';
+import { and, count, desc, eq, sql } from "drizzle-orm";
+import { database } from "./database/config";
+import { bookmarks, downloads, history, userScripts } from "./database/schema";
 
+// Legacy interfaces for backward compatibility
 export interface HistoryItem {
   id?: number;
   url: string;
@@ -28,408 +31,546 @@ export interface TabItem {
 }
 
 class DatabaseService {
-  private db: SQLite.SQLiteDatabase | null = null;
+  private initialized = false;
 
   async initialize(): Promise<void> {
     try {
-      this.db = await SQLite.openDatabaseAsync('vaibrowser.db');
-      
-      // Create tables
+      // Create tables using Drizzle migrations or direct SQL if needed
       await this.createTables();
-      
-      console.log('Database initialized successfully');
+
+      this.initialized = true;
+      console.log("Database initialized successfully with Drizzle ORM");
     } catch (error) {
-      console.error('Failed to initialize database:', error);
+      console.error("Failed to initialize database:", error);
       throw error;
     }
   }
 
   private async createTables(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    try {
+      // Create tables using raw SQL for initial setup
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS history (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          url TEXT NOT NULL,
+          title TEXT NOT NULL,
+          visited_at TEXT NOT NULL,
+          favicon TEXT
+        )
+      `);
 
-    await this.db.execAsync(`
-      CREATE TABLE IF NOT EXISTS history (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT NOT NULL,
-        title TEXT NOT NULL,
-        visited_at TEXT NOT NULL,
-        favicon TEXT
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS bookmarks (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          url TEXT NOT NULL UNIQUE,
+          title TEXT NOT NULL,
+          created_at TEXT NOT NULL,
+          favicon TEXT,
+          folder TEXT DEFAULT 'default'
+        )
+      `);
+
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS downloads (
+          id TEXT PRIMARY KEY,
+          url TEXT NOT NULL,
+          filename TEXT NOT NULL,
+          file_size INTEGER DEFAULT 0,
+          downloaded_size INTEGER DEFAULT 0,
+          status TEXT NOT NULL,
+          start_time TEXT NOT NULL,
+          end_time TEXT,
+          local_path TEXT,
+          mime_type TEXT,
+          error TEXT,
+          progress REAL DEFAULT 0,
+          speed INTEGER DEFAULT 0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      await database.run(sql`
+        CREATE TABLE IF NOT EXISTS user_scripts (
+          id TEXT PRIMARY KEY,
+          name TEXT NOT NULL,
+          description TEXT,
+          author TEXT,
+          version TEXT,
+          enabled INTEGER DEFAULT 1,
+          code TEXT NOT NULL,
+          includes TEXT NOT NULL,
+          excludes TEXT DEFAULT '[]',
+          grants TEXT DEFAULT '["none"]',
+          run_at TEXT DEFAULT 'document-ready',
+          update_url TEXT,
+          download_url TEXT,
+          homepage_url TEXT,
+          support_url TEXT,
+          install_time TEXT NOT NULL,
+          last_update TEXT,
+          run_count INTEGER DEFAULT 0,
+          is_built_in INTEGER DEFAULT 0,
+          icon TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      // Create indexes
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)`,
       );
-    `);
-
-    await this.db.execAsync(`
-      CREATE TABLE IF NOT EXISTS bookmarks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        url TEXT NOT NULL UNIQUE,
-        title TEXT NOT NULL,
-        created_at TEXT NOT NULL,
-        favicon TEXT,
-        folder TEXT DEFAULT 'default'
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at)`,
       );
-    `);
-
-    // Create indexes for better performance
-    await this.db.execAsync(`
-      CREATE INDEX IF NOT EXISTS idx_history_url ON history(url);
-      CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at);
-      CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url);
-      CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder);
-    `);
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url)`,
+      );
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder)`,
+      );
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
+      );
+      await database.run(
+        sql`CREATE INDEX IF NOT EXISTS idx_downloads_start_time ON downloads(start_time)`,
+      );
+    } catch (error) {
+      console.error("Failed to create tables:", error);
+      throw error;
+    }
   }
 
   // History methods
   async addHistoryItem(item: HistoryItem): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
       // Check if URL already exists in recent history (last 24 hours)
-      const existing = await this.db.getFirstAsync(
-        'SELECT id FROM history WHERE url = ? AND visited_at > datetime("now", "-1 day")',
-        [item.url]
-      );
+      const existing = await database
+        .select({ id: history.id })
+        .from(history)
+        .where(
+          and(
+            eq(history.url, item.url),
+            sql`visited_at > datetime('now', '-1 day')`,
+          ),
+        )
+        .limit(1);
 
-      if (existing) {
+      if (existing.length > 0) {
         // Update the existing entry's timestamp
-        await this.db.runAsync(
-          'UPDATE history SET visited_at = ?, title = ? WHERE url = ?',
-          [item.visitedAt, item.title, item.url]
-        );
+        await database
+          .update(history)
+          .set({
+            visitedAt: item.visitedAt,
+            title: item.title,
+          })
+          .where(eq(history.url, item.url));
       } else {
         // Insert new entry
-        await this.db.runAsync(
-          'INSERT INTO history (url, title, visited_at, favicon) VALUES (?, ?, ?, ?)',
-          [item.url, item.title, item.visitedAt, item.favicon || null]
-        );
+        await database.insert(history).values({
+          url: item.url,
+          title: item.title,
+          visitedAt: item.visitedAt,
+          favicon: item.favicon || null,
+        });
       }
 
       // Keep only the last 1000 history items
-      await this.db.runAsync(`
-        DELETE FROM history 
-        WHERE id NOT IN (
-          SELECT id FROM history 
-          ORDER BY visited_at DESC 
-          LIMIT 1000
-        )
-      `);
+      const oldestItems = await database
+        .select({ id: history.id })
+        .from(history)
+        .orderBy(desc(history.visitedAt))
+        .offset(1000);
+
+      if (oldestItems.length > 0) {
+        const idsToDelete = oldestItems.map((item) => item.id);
+        await database
+          .delete(history)
+          .where(sql`id NOT IN (${sql.join(idsToDelete)})`);
+      }
     } catch (error) {
-      console.error('Failed to add history item:', error);
+      console.error("Failed to add history item:", error);
       throw error;
     }
   }
 
   async getHistory(limit: number = 100): Promise<HistoryItem[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const result = await this.db.getAllAsync(
-        'SELECT * FROM history ORDER BY visited_at DESC LIMIT ?',
-        [limit]
-      );
+      const result = await database
+        .select()
+        .from(history)
+        .orderBy(desc(history.visitedAt))
+        .limit(limit);
 
-      return result.map(row => ({
-        id: (row as any).id,
-        url: (row as any).url,
-        title: (row as any).title,
-        visitedAt: (row as any).visited_at,
-        favicon: (row as any).favicon,
-      })) as HistoryItem[];
+      return result.map((row) => ({
+        id: row.id,
+        url: row.url,
+        title: row.title,
+        visitedAt: row.visitedAt,
+        favicon: row.favicon || undefined,
+      }));
     } catch (error) {
-      console.error('Failed to get history:', error);
+      console.error("Failed to get history:", error);
       return [];
     }
   }
 
-  async searchHistory(query: string, limit: number = 50): Promise<HistoryItem[]> {
-    if (!this.db) throw new Error('Database not initialized');
+  async searchHistory(
+    query: string,
+    limit: number = 50,
+  ): Promise<HistoryItem[]> {
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const result = await this.db.getAllAsync(`
-        SELECT * FROM history 
-        WHERE title LIKE ? OR url LIKE ? 
-        ORDER BY visited_at DESC 
-        LIMIT ?
-      `, [`%${query}%`, `%${query}%`, limit]);
+      const result = await database
+        .select()
+        .from(history)
+        .where(
+          sql`title LIKE ${"%" + query + "%"} OR url LIKE ${"%" + query + "%"}`,
+        )
+        .orderBy(desc(history.visitedAt))
+        .limit(limit);
 
-      return result.map(row => ({
-        id: (row as any).id,
-        url: (row as any).url,
-        title: (row as any).title,
-        visitedAt: (row as any).visited_at,
-        favicon: (row as any).favicon,
-      })) as HistoryItem[];
+      return result.map((row) => ({
+        id: row.id,
+        url: row.url,
+        title: row.title,
+        visitedAt: row.visitedAt,
+        favicon: row.favicon || undefined,
+      }));
     } catch (error) {
-      console.error('Failed to search history:', error);
+      console.error("Failed to search history:", error);
       return [];
     }
   }
 
   async clearHistory(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await this.db.runAsync('DELETE FROM history');
-      console.log('History cleared successfully');
+      await database.delete(history);
+      console.log("History cleared successfully");
     } catch (error) {
-      console.error('Failed to clear history:', error);
+      console.error("Failed to clear history:", error);
       throw error;
     }
   }
 
   async deleteHistoryItem(id: number): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await this.db.runAsync('DELETE FROM history WHERE id = ?', [id]);
+      await database.delete(history).where(eq(history.id, id));
     } catch (error) {
-      console.error('Failed to delete history item:', error);
+      console.error("Failed to delete history item:", error);
       throw error;
     }
   }
 
   // Bookmark methods
   async addBookmark(item: BookmarkItem): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await this.db.runAsync(
-        'INSERT OR REPLACE INTO bookmarks (url, title, created_at, favicon, folder) VALUES (?, ?, ?, ?, ?)',
-        [item.url, item.title, item.createdAt, item.favicon || null, item.folder || 'default']
-      );
+      await database
+        .insert(bookmarks)
+        .values({
+          url: item.url,
+          title: item.title,
+          createdAt: item.createdAt,
+          favicon: item.favicon || null,
+          folder: item.folder || "default",
+        })
+        .onConflict((table) => ({
+          target: table.url,
+          set: {
+            title: item.title,
+            favicon: item.favicon || null,
+            folder: item.folder || "default",
+          },
+        }));
     } catch (error) {
-      console.error('Failed to add bookmark:', error);
+      console.error("Failed to add bookmark:", error);
       throw error;
     }
   }
 
   async getBookmarks(folder?: string): Promise<BookmarkItem[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      let query = 'SELECT * FROM bookmarks';
-      let params: any[] = [];
+      let query = database.select().from(bookmarks);
 
-      if (folder && folder !== 'default') {
-        query += ' WHERE folder = ?';
-        params = [folder];
+      if (folder && folder !== "default") {
+        query = query.where(eq(bookmarks.folder, folder));
       }
 
-      query += ' ORDER BY created_at DESC';
+      const result = await query.orderBy(desc(bookmarks.createdAt));
 
-      const result = await this.db.getAllAsync(query, params);
-
-      return result.map(row => ({
-        id: (row as any).id,
-        url: (row as any).url,
-        title: (row as any).title,
-        createdAt: (row as any).created_at,
-        favicon: (row as any).favicon,
-        folder: (row as any).folder,
-      })) as BookmarkItem[];
+      return result.map((row) => ({
+        id: row.id,
+        url: row.url,
+        title: row.title,
+        createdAt: row.createdAt,
+        favicon: row.favicon || undefined,
+        folder: row.folder || undefined,
+      }));
     } catch (error) {
-      console.error('Failed to get bookmarks:', error);
+      console.error("Failed to get bookmarks:", error);
       return [];
     }
   }
 
   async removeBookmark(url: string): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await this.db.runAsync('DELETE FROM bookmarks WHERE url = ?', [url]);
+      await database.delete(bookmarks).where(eq(bookmarks.url, url));
     } catch (error) {
-      console.error('Failed to remove bookmark:', error);
+      console.error("Failed to remove bookmark:", error);
       throw error;
     }
   }
 
   async isBookmarked(url: string): Promise<boolean> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const result = await this.db.getFirstAsync(
-        'SELECT id FROM bookmarks WHERE url = ?',
-        [url]
-      );
-      return !!result;
+      const result = await database
+        .select({ id: bookmarks.id })
+        .from(bookmarks)
+        .where(eq(bookmarks.url, url))
+        .limit(1);
+
+      return result.length > 0;
     } catch (error) {
-      console.error('Failed to check bookmark status:', error);
+      console.error("Failed to check bookmark status:", error);
       return false;
     }
   }
 
   async getAllBookmarkFolders(): Promise<string[]> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const result = await this.db.getAllAsync(
-        'SELECT DISTINCT folder FROM bookmarks ORDER BY folder'
-      );
+      const result = await database
+        .selectDistinct({ folder: bookmarks.folder })
+        .from(bookmarks)
+        .orderBy(bookmarks.folder);
 
-      const folders = result.map(row => (row as any).folder).filter(Boolean);
-      
+      const folders = result.map((row) => row.folder).filter(Boolean);
+
       // Always include 'default' folder
-      if (!folders.includes('default')) {
-        folders.unshift('default');
+      if (!folders.includes("default")) {
+        folders.unshift("default");
       }
 
       return folders as string[];
     } catch (error) {
-      console.error('Failed to get bookmark folders:', error);
-      return ['default'];
+      console.error("Failed to get bookmark folders:", error);
+      return ["default"];
     }
   }
 
-  async searchBookmarks(query: string, limit: number = 50): Promise<BookmarkItem[]> {
-    if (!this.db) throw new Error('Database not initialized');
+  async searchBookmarks(
+    query: string,
+    limit: number = 50,
+  ): Promise<BookmarkItem[]> {
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const result = await this.db.getAllAsync(`
-        SELECT * FROM bookmarks 
-        WHERE title LIKE ? OR url LIKE ? 
-        ORDER BY created_at DESC 
-        LIMIT ?
-      `, [`%${query}%`, `%${query}%`, limit]);
+      const result = await database
+        .select()
+        .from(bookmarks)
+        .where(
+          sql`title LIKE ${"%" + query + "%"} OR url LIKE ${"%" + query + "%"}`,
+        )
+        .orderBy(desc(bookmarks.createdAt))
+        .limit(limit);
 
-      return result.map(row => ({
-        id: (row as any).id,
-        url: (row as any).url,
-        title: (row as any).title,
-        createdAt: (row as any).created_at,
-        favicon: (row as any).favicon,
-        folder: (row as any).folder,
-      })) as BookmarkItem[];
+      return result.map((row) => ({
+        id: row.id,
+        url: row.url,
+        title: row.title,
+        createdAt: row.createdAt,
+        favicon: row.favicon || undefined,
+        folder: row.folder || undefined,
+      }));
     } catch (error) {
-      console.error('Failed to search bookmarks:', error);
+      console.error("Failed to search bookmarks:", error);
       return [];
     }
   }
 
   // Utility methods
   async clearAllData(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await this.db.runAsync('DELETE FROM history');
-      await this.db.runAsync('DELETE FROM bookmarks');
-      console.log('All data cleared successfully');
+      await database.delete(history);
+      await database.delete(bookmarks);
+      console.log("All data cleared successfully");
     } catch (error) {
-      console.error('Failed to clear all data:', error);
-      throw error;
+      console.error("Failed to clear all data:", error);
     }
   }
 
   async getStats(): Promise<{ historyCount: number; bookmarkCount: number }> {
-    if (!this.db) throw new Error('Database not initialized');
+    if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const historyResult = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM history');
-      const bookmarkResult = await this.db.getFirstAsync('SELECT COUNT(*) as count FROM bookmarks');
+      const [historyResult] = await database
+        .select({ count: count() })
+        .from(history);
+
+      const [bookmarkResult] = await database
+        .select({ count: count() })
+        .from(bookmarks);
 
       return {
-        historyCount: (historyResult as any)?.count || 0,
-        bookmarkCount: (bookmarkResult as any)?.count || 0,
+        historyCount: historyResult?.count || 0,
+        bookmarkCount: bookmarkResult?.count || 0,
       };
     } catch (error) {
-      console.error('Failed to get stats:', error);
+      console.error("Failed to get stats:", error);
       return { historyCount: 0, bookmarkCount: 0 };
     }
   }
 
   async close(): Promise<void> {
-    if (this.db) {
-      await this.db.closeAsync();
-      this.db = null;
-    }
+    // Note: op-sqlite doesn't require explicit closing like expo-sqlite
+    this.initialized = false;
   }
 
   // Download Management Methods
   async createDownloadsTable(): Promise<void> {
-    const query = `
-      CREATE TABLE IF NOT EXISTS downloads (
-        id TEXT PRIMARY KEY,
-        url TEXT NOT NULL,
-        filename TEXT NOT NULL,
-        fileSize INTEGER DEFAULT 0,
-        downloadedSize INTEGER DEFAULT 0,
-        status TEXT NOT NULL,
-        startTime TEXT NOT NULL,
-        endTime TEXT,
-        localPath TEXT,
-        mimeType TEXT,
-        error TEXT,
-        progress REAL DEFAULT 0,
-        speed INTEGER DEFAULT 0,
-        createdAt TEXT DEFAULT CURRENT_TIMESTAMP
-      );
-    `;
-    
-    await this.db.execAsync(query);
-    
-    // Create index for faster queries
-    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status);');
-    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_downloads_startTime ON downloads(startTime);');
+    // Table creation is handled in createTables()
   }
 
   async saveDownload(download: any): Promise<void> {
-    const query = `
-      INSERT OR REPLACE INTO downloads (
-        id, url, filename, fileSize, downloadedSize, status, startTime,
-        endTime, localPath, mimeType, error, progress, speed
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    await this.db.runAsync(query, [
-      download.id,
-      download.url,
-      download.filename,
-      download.fileSize || 0,
-      download.downloadedSize || 0,
-      download.status,
-      download.startTime,
-      download.endTime || null,
-      download.localPath || null,
-      download.mimeType || null,
-      download.error || null,
-      download.progress || 0,
-      download.speed || 0
-    ]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database
+        .insert(downloads)
+        .values({
+          id: download.id,
+          url: download.url,
+          filename: download.filename,
+          fileSize: download.fileSize || 0,
+          downloadedSize: download.downloadedSize || 0,
+          status: download.status,
+          startTime: download.startTime,
+          endTime: download.endTime || null,
+          localPath: download.localPath || null,
+          mimeType: download.mimeType || null,
+          error: download.error || null,
+          progress: download.progress || 0,
+          speed: download.speed || 0,
+        })
+        .onConflict((table) => ({
+          target: table.id,
+          set: {
+            fileSize: download.fileSize || 0,
+            downloadedSize: download.downloadedSize || 0,
+            status: download.status,
+            endTime: download.endTime || null,
+            localPath: download.localPath || null,
+            error: download.error || null,
+            progress: download.progress || 0,
+            speed: download.speed || 0,
+          },
+        }));
+    } catch (error) {
+      console.error("Failed to save download:", error);
+      throw error;
+    }
   }
 
   async getDownloads(): Promise<any[]> {
-    const query = `
-      SELECT * FROM downloads 
-      ORDER BY startTime DESC
-    `;
-    
-    const result = await this.db.getAllAsync(query);
-    return result as any[];
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(downloads)
+        .orderBy(desc(downloads.startTime));
+
+      return result;
+    } catch (error) {
+      console.error("Failed to get downloads:", error);
+      return [];
+    }
   }
 
   async getDownload(id: string): Promise<any | null> {
-    const query = 'SELECT * FROM downloads WHERE id = ?';
-    const result = await this.db.getFirstAsync(query, [id]);
-    return result as any || null;
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(downloads)
+        .where(eq(downloads.id, id))
+        .limit(1);
+
+      return result[0] || null;
+    } catch (error) {
+      console.error("Failed to get download:", error);
+      return null;
+    }
   }
 
   async removeDownload(id: string): Promise<void> {
-    const query = 'DELETE FROM downloads WHERE id = ?';
-    await this.db.runAsync(query, [id]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database.delete(downloads).where(eq(downloads.id, id));
+    } catch (error) {
+      console.error("Failed to remove download:", error);
+      throw error;
+    }
   }
 
   async getDownloadsByStatus(status: string): Promise<any[]> {
-    const query = 'SELECT * FROM downloads WHERE status = ? ORDER BY startTime DESC';
-    const result = await this.db.getAllAsync(query, [status]);
-    return result as any[];
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(downloads)
+        .where(eq(downloads.status, status))
+        .orderBy(desc(downloads.startTime));
+
+      return result;
+    } catch (error) {
+      console.error("Failed to get downloads by status:", error);
+      return [];
+    }
   }
 
   async clearCompletedDownloads(): Promise<void> {
-    const query = 'DELETE FROM downloads WHERE status = ?';
-    await this.db.runAsync(query, ['completed']);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database.delete(downloads).where(eq(downloads.status, "completed"));
+    } catch (error) {
+      console.error("Failed to clear completed downloads:", error);
+      throw error;
+    }
   }
 
   async clearAllDownloads(): Promise<void> {
-    const query = 'DELETE FROM downloads';
-    await this.db.runAsync(query);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database.delete(downloads);
+    } catch (error) {
+      console.error("Failed to clear all downloads:", error);
+      throw error;
+    }
   }
 
   async getDownloadStats(): Promise<{
@@ -440,20 +581,30 @@ class DatabaseService {
     totalSize: number;
     downloadedSize: number;
   }> {
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END) as completed,
-        SUM(CASE WHEN status IN ('downloading', 'pending') THEN 1 ELSE 0 END) as downloading,
-        SUM(CASE WHEN status IN ('error', 'cancelled') THEN 1 ELSE 0 END) as failed,
-        SUM(fileSize) as totalSize,
-        SUM(downloadedSize) as downloadedSize
-      FROM downloads
-    `;
-    
-    const result = await this.db.getFirstAsync(statsQuery) as any;
-    
-    if (!result) {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const [result] = await database
+        .select({
+          total: count(),
+          completed: sql<number>`SUM(CASE WHEN status = 'completed' THEN 1 ELSE 0 END)`,
+          downloading: sql<number>`SUM(CASE WHEN status IN ('downloading', 'pending') THEN 1 ELSE 0 END)`,
+          failed: sql<number>`SUM(CASE WHEN status IN ('error', 'cancelled') THEN 1 ELSE 0 END)`,
+          totalSize: sql<number>`SUM(file_size)`,
+          downloadedSize: sql<number>`SUM(downloaded_size)`,
+        })
+        .from(downloads);
+
+      return {
+        total: result?.total || 0,
+        completed: result?.completed || 0,
+        downloading: result?.downloading || 0,
+        failed: result?.failed || 0,
+        totalSize: result?.totalSize || 0,
+        downloadedSize: result?.downloadedSize || 0,
+      };
+    } catch (error) {
+      console.error("Failed to get download stats:", error);
       return {
         total: 0,
         completed: 0,
@@ -463,165 +614,157 @@ class DatabaseService {
         downloadedSize: 0,
       };
     }
-    
-    return {
-      total: result.total || 0,
-      completed: result.completed || 0,
-      downloading: result.downloading || 0,
-      failed: result.failed || 0,
-      totalSize: result.totalSize || 0,
-      downloadedSize: result.downloadedSize || 0,
-    };
   }
 
   // User Script Management Methods
   async createUserScriptsTable(): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    
-    const query = `
-      CREATE TABLE IF NOT EXISTS user_scripts (
-        id TEXT PRIMARY KEY,
-        name TEXT NOT NULL,
-        description TEXT,
-        author TEXT,
-        version TEXT,
-        enabled INTEGER DEFAULT 1,
-        code TEXT NOT NULL,
-        includes TEXT NOT NULL,
-        excludes TEXT DEFAULT '[]',
-        grants TEXT DEFAULT '["none"]',
-        runAt TEXT DEFAULT 'document-ready',
-        updateUrl TEXT,
-        downloadUrl TEXT,
-        homepageUrl TEXT,
-        supportUrl TEXT,
-        installTime TEXT NOT NULL,
-        lastUpdate TEXT,
-        runCount INTEGER DEFAULT 0,
-        isBuiltIn INTEGER DEFAULT 0,
-        icon TEXT
-      );
-    `;
-    
-    await this.db.execAsync(query);
-    
-    // Create indexes for faster queries
-    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_user_scripts_enabled ON user_scripts(enabled);');
-    await this.db.execAsync('CREATE INDEX IF NOT EXISTS idx_user_scripts_builtin ON user_scripts(isBuiltIn);');
+    // Table creation is handled in createTables()
   }
 
   async saveUserScript(script: any): Promise<void> {
-    if (!this.db) throw new Error('Database not initialized');
-    
-    const query = `
-      INSERT OR REPLACE INTO user_scripts (
-        id, name, description, author, version, enabled, code, includes,
-        excludes, grants, runAt, updateUrl, downloadUrl, homepageUrl,
-        supportUrl, installTime, lastUpdate, runCount, isBuiltIn, icon
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `;
-    
-    await this.db.runAsync(query, [
-      script.id,
-      script.name,
-      script.description || null,
-      script.author || null,
-      script.version || null,
-      script.enabled ? 1 : 0,
-      script.code,
-      JSON.stringify(script.includes || []),
-      JSON.stringify(script.excludes || []),
-      JSON.stringify(script.grants || ['none']),
-      script.runAt || 'document-ready',
-      script.updateUrl || null,
-      script.downloadUrl || null,
-      script.homepageUrl || null,
-      script.supportUrl || null,
-      script.installTime,
-      script.lastUpdate || null,
-      script.runCount || 0,
-      script.isBuiltIn ? 1 : 0,
-      script.icon || null
-    ]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database
+        .insert(userScripts)
+        .values({
+          id: script.id,
+          name: script.name,
+          description: script.description || null,
+          author: script.author || null,
+          version: script.version || null,
+          enabled: script.enabled !== false,
+          code: script.code,
+          includes: script.includes,
+          excludes: script.excludes || "[]",
+          grants: script.grants || '["none"]',
+          runAt: script.runAt || "document-ready",
+          updateUrl: script.updateUrl || null,
+          downloadUrl: script.downloadUrl || null,
+          homepageUrl: script.homepageUrl || null,
+          supportUrl: script.supportUrl || null,
+          installTime: script.installTime,
+          lastUpdate: script.lastUpdate || null,
+          runCount: script.runCount || 0,
+          isBuiltIn: script.isBuiltIn || false,
+          icon: script.icon || null,
+        })
+        .onConflict((table) => ({
+          target: table.id,
+          set: {
+            name: script.name,
+            description: script.description || null,
+            author: script.author || null,
+            version: script.version || null,
+            enabled: script.enabled !== false,
+            code: script.code,
+            includes: script.includes,
+            excludes: script.excludes || "[]",
+            grants: script.grants || '["none"]',
+            runAt: script.runAt || "document-ready",
+            updateUrl: script.updateUrl || null,
+            downloadUrl: script.downloadUrl || null,
+            homepageUrl: script.homepageUrl || null,
+            supportUrl: script.supportUrl || null,
+            lastUpdate: script.lastUpdate || null,
+            runCount: script.runCount || 0,
+            isBuiltIn: script.isBuiltIn || false,
+            icon: script.icon || null,
+          },
+        }));
+    } catch (error) {
+      console.error("Failed to save user script:", error);
+      throw error;
+    }
   }
 
   async getUserScripts(): Promise<any[]> {
-    if (!this.db) throw new Error('Database not initialized');
-    
-    const query = `
-      SELECT * FROM user_scripts 
-      ORDER BY isBuiltIn DESC, name ASC
-    `;
-    
-    const result = await this.db.getAllAsync(query);
-    
-    return result.map((row: any) => ({
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      author: row.author,
-      version: row.version,
-      enabled: !!row.enabled,
-      code: row.code,
-      includes: JSON.parse(row.includes || '[]'),
-      excludes: JSON.parse(row.excludes || '[]'),
-      grants: JSON.parse(row.grants || '["none"]'),
-      runAt: row.runAt,
-      updateUrl: row.updateUrl,
-      downloadUrl: row.downloadUrl,
-      homepageUrl: row.homepageUrl,
-      supportUrl: row.supportUrl,
-      installTime: row.installTime,
-      lastUpdate: row.lastUpdate,
-      runCount: row.runCount || 0,
-      isBuiltIn: !!row.isBuiltIn,
-      icon: row.icon,
-    }));
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(userScripts)
+        .orderBy(userScripts.name);
+
+      return result.map((row) => ({
+        ...row,
+        enabled: Boolean(row.enabled),
+        isBuiltIn: Boolean(row.isBuiltIn),
+        includes: JSON.parse(row.includes),
+        excludes: JSON.parse(row.excludes),
+        grants: JSON.parse(row.grants),
+      }));
+    } catch (error) {
+      console.error("Failed to get user scripts:", error);
+      return [];
+    }
   }
 
   async getUserScript(id: string): Promise<any | null> {
-    const query = 'SELECT * FROM user_scripts WHERE id = ?';
-    const result = await this.db.getFirstAsync(query, [id]) as any;
-    
-    if (!result) return null;
-    
-    return {
-      id: result.id,
-      name: result.name,
-      description: result.description,
-      author: result.author,
-      version: result.version,
-      enabled: !!result.enabled,
-      code: result.code,
-      includes: JSON.parse(result.includes || '[]'),
-      excludes: JSON.parse(result.excludes || '[]'),
-      grants: JSON.parse(result.grants || '["none"]'),
-      runAt: result.runAt,
-      updateUrl: result.updateUrl,
-      downloadUrl: result.downloadUrl,
-      homepageUrl: result.homepageUrl,
-      supportUrl: result.supportUrl,
-      installTime: result.installTime,
-      lastUpdate: result.lastUpdate,
-      runCount: result.runCount || 0,
-      isBuiltIn: !!result.isBuiltIn,
-      icon: result.icon,
-    };
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(userScripts)
+        .where(eq(userScripts.id, id))
+        .limit(1);
+
+      if (result.length === 0) return null;
+
+      const row = result[0];
+      return {
+        ...row,
+        enabled: Boolean(row.enabled),
+        isBuiltIn: Boolean(row.isBuiltIn),
+        includes: JSON.parse(row.includes),
+        excludes: JSON.parse(row.excludes),
+        grants: JSON.parse(row.grants),
+      };
+    } catch (error) {
+      console.error("Failed to get user script:", error);
+      return null;
+    }
   }
 
   async removeUserScript(id: string): Promise<void> {
-    const query = 'DELETE FROM user_scripts WHERE id = ? AND isBuiltIn = 0';
-    await this.db.runAsync(query, [id]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database.delete(userScripts).where(eq(userScripts.id, id));
+    } catch (error) {
+      console.error("Failed to remove user script:", error);
+      throw error;
+    }
   }
 
   async updateUserScriptRunCount(id: string): Promise<void> {
-    const query = 'UPDATE user_scripts SET runCount = runCount + 1 WHERE id = ?';
-    await this.db.runAsync(query, [id]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database
+        .update(userScripts)
+        .set({ runCount: sql`run_count + 1` })
+        .where(eq(userScripts.id, id));
+    } catch (error) {
+      console.error("Failed to update user script run count:", error);
+      throw error;
+    }
   }
 
   async setUserScriptEnabled(id: string, enabled: boolean): Promise<void> {
-    const query = 'UPDATE user_scripts SET enabled = ? WHERE id = ?';
-    await this.db.runAsync(query, [enabled ? 1 : 0, id]);
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database
+        .update(userScripts)
+        .set({ enabled })
+        .where(eq(userScripts.id, id));
+    } catch (error) {
+      console.error("Failed to set user script enabled status:", error);
+      throw error;
+    }
   }
 
   async getUserScriptStats(): Promise<{
@@ -631,19 +774,28 @@ class DatabaseService {
     user: number;
     totalRuns: number;
   }> {
-    const statsQuery = `
-      SELECT 
-        COUNT(*) as total,
-        SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END) as enabled,
-        SUM(CASE WHEN isBuiltIn = 1 THEN 1 ELSE 0 END) as builtIn,
-        SUM(CASE WHEN isBuiltIn = 0 THEN 1 ELSE 0 END) as user,
-        SUM(runCount) as totalRuns
-      FROM user_scripts
-    `;
-    
-    const result = await this.db.getFirstAsync(statsQuery) as any;
-    
-    if (!result) {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const [result] = await database
+        .select({
+          total: count(),
+          enabled: sql<number>`SUM(CASE WHEN enabled = 1 THEN 1 ELSE 0 END)`,
+          builtIn: sql<number>`SUM(CASE WHEN is_built_in = 1 THEN 1 ELSE 0 END)`,
+          user: sql<number>`SUM(CASE WHEN is_built_in = 0 THEN 1 ELSE 0 END)`,
+          totalRuns: sql<number>`SUM(run_count)`,
+        })
+        .from(userScripts);
+
+      return {
+        total: result?.total || 0,
+        enabled: result?.enabled || 0,
+        builtIn: result?.builtIn || 0,
+        user: result?.user || 0,
+        totalRuns: result?.totalRuns || 0,
+      };
+    } catch (error) {
+      console.error("Failed to get user script stats:", error);
       return {
         total: 0,
         enabled: 0,
@@ -652,15 +804,7 @@ class DatabaseService {
         totalRuns: 0,
       };
     }
-    
-    return {
-      total: result.total || 0,
-      enabled: result.enabled || 0,
-      builtIn: result.builtIn || 0,
-      user: result.user || 0,
-      totalRuns: result.totalRuns || 0,
-    };
   }
 }
 
-export const databaseService = new DatabaseService(); 
+xport default new DatabaseService();
