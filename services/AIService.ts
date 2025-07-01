@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { fetch } from "expo/fetch";
 import {
   CoreMessage,
   generateText,
@@ -599,15 +600,19 @@ class AIService {
   // Get AI provider instance based on current config
   private providerFactories = {
     [Provider.OpenAI]: (config: AIConfig) =>
-      createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL }),
+      // @ts-ignore
+      createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, fetch }),
     [Provider.Anthropic]: (config: AIConfig) =>
-      createAnthropic({ apiKey: config.apiKey }),
+      // @ts-ignore
+      createAnthropic({ apiKey: config.apiKey, fetch }),
     [Provider.Google]: (config: AIConfig) =>
-      createGoogleGenerativeAI({ apiKey: config.apiKey }),
+      // @ts-ignore
+      createGoogleGenerativeAI({ apiKey: config.apiKey, fetch }),
     [Provider.Groq]: (config: AIConfig) =>
       createGroq({ apiKey: config.apiKey }),
     [Provider.DeepSeek]: (config: AIConfig) =>
-      createDeepSeek({ apiKey: config.apiKey }),
+      // @ts-ignore
+      createDeepSeek({ apiKey: config.apiKey, fetch }),
     [Provider.Mistral]: (config: AIConfig) =>
       createMistral({ apiKey: config.apiKey }),
     [Provider.XAI]: (config: AIConfig) => createXai({ apiKey: config.apiKey }),

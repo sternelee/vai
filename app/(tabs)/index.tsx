@@ -144,11 +144,7 @@ export default function BrowserScreen() {
   const [downloadManagerVisible, setDownloadManagerVisible] = useState(false);
   const [historyVisible, setHistoryVisible] = useState(false);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
-  const [showBookmarks, setShowBookmarks] = useState(false);
-  const [showDownloads, setShowDownloads] = useState(false);
   const [showUserScripts, setShowUserScripts] = useState(false);
-  const [showAIChat, setShowAIChat] = useState(false);
   const [showResourceSniffer, setShowResourceSniffer] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
@@ -898,7 +894,7 @@ export default function BrowserScreen() {
           title: message.pageTitle,
           url: message.pageUrl,
         });
-        setShowAIChat(true);
+        setAiChatVisible(true);
         break;
 
       case "text_selected":
@@ -1167,7 +1163,7 @@ export default function BrowserScreen() {
         subtitle: aiConfigured ? "与AI进行智能对话" : "需要配置AI提供商",
         icon: "chatbubble-ellipses",
         color: "#007AFF",
-        onPress: () => setShowAIChat(true),
+        onPress: () => setAiChatVisible(true),
         disabled: !aiConfigured,
       },
       {
@@ -1290,12 +1286,12 @@ export default function BrowserScreen() {
       return (
         <HomePage
           onNavigate={handleNavigate}
-          onShowAIChat={() => setShowAIChat(true)}
+          onShowAIChat={() => setAiChatVisible(true)}
           onShowResourceSniffer={() => setShowResourceSniffer(true)}
           onShowUserScripts={() => setShowUserScripts(true)}
-          onShowDownloads={() => setShowDownloads(true)}
-          onShowBookmarks={() => setShowBookmarks(true)}
-          onShowHistory={() => setShowHistory(true)}
+          onShowDownloads={() => setDownloadManagerVisible(true)}
+          onShowBookmarks={() => setBookmarksVisible(true)}
+          onShowHistory={() => setHistoryVisible(true)}
           shortcuts={homePageShortcuts}
           onUpdateShortcuts={handleUpdateHomePageShortcuts}
           currentPageUrl={
@@ -1319,7 +1315,7 @@ export default function BrowserScreen() {
           styles.quickActionButton,
           isDark && styles.quickActionButtonDark,
         ]}
-        onPress={() => setShowHistory(true)}
+        onPress={() => setHistoryVisible(true)}
       >
         <Text style={styles.quickActionIcon}>📚</Text>
         <Text
@@ -1334,7 +1330,7 @@ export default function BrowserScreen() {
           styles.quickActionButton,
           isDark && styles.quickActionButtonDark,
         ]}
-        onPress={() => setShowBookmarks(true)}
+        onPress={() => setBookmarksVisible(true)}
       >
         <Text style={styles.quickActionIcon}>⭐</Text>
         <Text
@@ -1349,7 +1345,7 @@ export default function BrowserScreen() {
           styles.quickActionButton,
           isDark && styles.quickActionButtonDark,
         ]}
-        onPress={() => setShowDownloads(true)}
+        onPress={() => setDownloadManagerVisible(true)}
       >
         <Text style={styles.quickActionIcon}>📥</Text>
         <Text
@@ -1379,7 +1375,7 @@ export default function BrowserScreen() {
           styles.quickActionButton,
           isDark && styles.quickActionButtonDark,
         ]}
-        onPress={() => setShowAIChat(true)}
+        onPress={() => setAiChatVisible(true)}
       >
         <Text style={styles.quickActionIcon}>✨</Text>
         <Text
