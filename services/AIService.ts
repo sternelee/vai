@@ -1,6 +1,212 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { CoreMessage, generateText, streamText } from "ai";
+import {
+  CoreMessage,
+  generateText,
+  streamText,
+  extractReasoningMiddleware,
+} from "ai";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createGroq } from "@ai-sdk/groq";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createXai } from "@ai-sdk/xai";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createZhipu } from "zhipu-ai-provider";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createMistral } from "@ai-sdk/mistral";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAzure } from "@ai-sdk/azure";
 import { mcpService } from "./MCPService";
+
+export enum Provider {
+  OpenAI = "openai",
+  Anthropic = "anthropic",
+  Groq = "groq",
+  XAI = "xai",
+  DeepSeek = "deepseek",
+  Zhipu = "zhipu",
+  Azure = "azure",
+  OpenRouter = "openrouter",
+  AzureOpenAI = "azure",
+  Google = "google",
+  SiliconFlow = "siliconflow",
+  Mistral = "mistral",
+  Cerebras = "cerebras",
+}
+
+export const ProviderMap = {
+  [Provider.OpenAI]: {
+    models: [
+      "o1",
+      "o1-mini",
+      "o1-preview",
+      "o3-mini",
+      "o3",
+      "o4-mini",
+      "gpt-4.1",
+      "gpt-4.1-mini",
+      "gpt-4.1-nano",
+      "gpt-4o",
+      "gpt-4o-mini",
+      "gpt-4-turbo",
+      "gpt-4-turbo-preview",
+      "gpt-4-0125-preview",
+      "gpt-4-1106-preview",
+      "gpt-4",
+      "gpt-4-0613",
+      "gpt-4.5-preview",
+      "gpt-4.5-preview-2025-02-27",
+      "gpt-3.5-turbo-0125",
+      "gpt-3.5-turbo",
+      "gpt-3.5-turbo-1106",
+      "chatgpt-4o-latest",
+    ],
+    apiKey: "OPENAI_API_KEY",
+    baseURL: "https://api.openai.com/v1",
+  },
+  [Provider.Anthropic]: {
+    models: [
+      "claude-3-7-sonnet-20250219",
+      "claude-3-5-sonnet-latest",
+      "claude-3-5-sonnet-20241022",
+      "claude-3-5-sonnet-20240620",
+      "claude-3-5-haiku-latest",
+      "claude-3-5-haiku-20241022",
+      "claude-3-opus-latest",
+      "claude-3-opus-20240229",
+      "claude-3-sonnet-20240229",
+      "claude-3-haiku-20240307",
+    ],
+    apiKey: "ANTHROPIC_API_KEY",
+    baseURL: "https://api.anthropic.com/v1",
+  },
+  [Provider.Groq]: {
+    models: [
+      "gemma2-9b-it",
+      "llama-3.3-70b-versatile",
+      "llama-3.1-8b-instant",
+      "llama-guard-3-8b",
+      "llama3-70b-8192",
+      "llama3-8b-8192",
+      "mixtral-8x7b-32768",
+      "meta-llama/llama-4-scout-17b-16e-instruct",
+      "qwen-qwq-32b",
+      "mistral-saba-24b",
+      "qwen-2.5-32b",
+      "deepseek-r1-distill-qwen-32b",
+      "deepseek-r1-distill-llama-70b",
+    ],
+    apiKey: "GROQ_API_KEY",
+    baseURL: "https://api.groq.com/v1",
+  },
+  [Provider.XAI]: {
+    models: [
+      "grok-3",
+      "grok-3-latest",
+      "grok-3-fast",
+      "grok-3-fast-latest",
+      "grok-3-mini",
+      "grok-3-mini-latest",
+      "grok-3-mini-fast",
+      "grok-3-mini-fast-latest",
+      "grok-2-vision-1212",
+      "grok-2-vision",
+      "grok-2-vision-latest",
+      "grok-2-image-1212",
+      "grok-2-image",
+      "grok-2-image-latest",
+      "grok-2-1212",
+      "grok-2",
+      "grok-2-latest",
+      "grok-vision-beta",
+      "grok-beta",
+    ],
+    apiKey: "XAI_API_KEY",
+    baseURL: "https://api.xai.com/v1",
+  },
+  [Provider.DeepSeek]: {
+    models: ["deepseek-chat", "deepseek-reasoner"],
+    apiKey: "DEEPSEEK_API_KEY",
+    baseURL: "https://api.deepseek.com/v1",
+  },
+  [Provider.Zhipu]: {
+    models: [
+      "glm-4-plus",
+      "glm-4-air-0111",
+      "glm-4-air",
+      "glm-4-airx",
+      "glm-4-long",
+      "glm-4-flash",
+      "glm-4-flashx",
+      "glm-4v-plus-0111",
+      "glm-4v-plus",
+      "glm-4v",
+      "glm-4v-flash",
+      "glm-zero-preview",
+    ],
+    apiKey: "ZHIPU_API_KEY",
+    baseURL: "https://api.zhipu.com/v1",
+  },
+  [Provider.OpenRouter]: {
+    models: ["openrouter/auto"],
+    apiKey: "OPENROUTER_API_KEY",
+    baseURL: "https://openrouter.ai/api/v1",
+  },
+  [Provider.AzureOpenAI]: {
+    models: [],
+    apiKey: "AZURE_OPENAI_API_KEY",
+    baseURL:
+      "https://{resourceName}.openai.azure.com/openai/deployments/{modelId}{path}",
+  },
+  [Provider.Google]: {
+    models: [
+      "gemini-1.5-flash",
+      "gemini-1.5-flash-latest",
+      "gemini-1.5-flash-001",
+      "gemini-1.5-flash-002",
+      "gemini-1.5-flash-8b",
+      "gemini-1.5-flash-8b-latest",
+      "gemini-1.5-flash-8b-001",
+      "gemini-1.5-pro",
+      "gemini-1.5-pro-latest",
+      "gemini-1.5-pro-001",
+      "gemini-1.5-pro-002",
+      "gemini-2.0-flash",
+      "gemini-2.0-flash-001",
+      "gemini-2.0-flash-live-001",
+      "gemini-2.0-flash-lite",
+      "gemini-2.0-pro-exp-02-05",
+      "gemini-2.0-flash-thinking-exp-01-21",
+      "gemini-2.0-flash-exp",
+      "gemini-2.5-pro-exp-03-25",
+      "gemini-2.5-pro-preview-05-06",
+      "gemini-2.5-flash-preview-04-17",
+      "gemini-exp-1206",
+      "gemma-3-27b-it",
+      "learnlm-1.5-pro-experimental",
+    ],
+    apiKey: "GOOGLE_API_KEY",
+    baseURL: "https://generativelanguage.googleapis.com/v1beta",
+  },
+  [Provider.SiliconFlow]: {
+    models: [
+      "Pro/deepseek-ai/DeepSeek-V3",
+      "Pro/deepseek-ai/DeepSeek-R1",
+      "deepseek-ai/DeepSeek-V3",
+      "deepseek-ai/DeepSeek-R1",
+      "Qwen/QVQ-72B-Preview",
+      "Qwen/QwQ-32B-Preview",
+      "Qwen/QwQ-32B",
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
+      "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
+      "THUDM/GLM-4-32B-0414",
+      "THUDM/GLM-Z1-32B-0414",
+      "THUDM/GLM-Z1-9B-0414",
+      "THUDM/GLM-4-9B-0414",
+    ],
+    apiKey: "SILICONFLOW_API_KEY",
+    baseURL: "https://api.siliconflow.cn/v1",
+  },
+};
 
 export interface AIResponse {
   content: string;
@@ -63,6 +269,10 @@ export interface AIConfig {
   projectId?: string;
   [key: string]: any;
 }
+
+const middleware = extractReasoningMiddleware({
+  tagName: "think",
+});
 
 class AIService {
   private config: AIConfig | null = null;
@@ -509,63 +719,78 @@ class AIService {
     const { provider, apiKey, baseURL, region, projectId } = this.config;
 
     switch (provider) {
-      case "openai": {
-        const { openai } = require("@ai-sdk/openai");
-        return openai({
-          apiKey: apiKey,
+      case Provider.OpenAI: {
+        return createOpenAI({
+          apiKey,
           baseURL: baseURL,
         });
       }
 
-      case "anthropic": {
-        const { anthropic } = require("@ai-sdk/anthropic");
-        return anthropic({
+      case Provider.Anthropic: {
+        return createAnthropic({
+          apiKey,
+        });
+      }
+
+      case Provider.Google: {
+        return createGoogleGenerativeAI({
           apiKey: apiKey,
         });
       }
 
-      case "google": {
-        const { google } = require("@ai-sdk/google");
-        return google({
+      case Provider.Groq: {
+        return createGroq({
+          apiKey,
+        });
+      }
+
+      case Provider.DeepSeek: {
+        return createDeepSeek({
           apiKey: apiKey,
         });
       }
 
-      case "groq": {
-        const { groq } = require("@ai-sdk/groq");
-        return groq({
-          apiKey: apiKey,
+      case Provider.Mistral: {
+        return createMistral({
+          apiKey,
         });
       }
 
-      case "deepseek": {
-        const { createOpenAI } = require("@ai-sdk/openai");
+      case Provider.XAI: {
+        return createXai({
+          apiKey,
+        });
+      }
+
+      case Provider.OpenRouter: {
+        return createOpenRouter({
+          apiKey,
+        });
+      }
+
+      case Provider.AzureOpenAI: {
+        return createAzure({
+          apiKey,
+        });
+      }
+
+      case Provider.Zhipu: {
+        return createZhipu({
+          apiKey,
+        });
+      }
+
+      case Provider.SiliconFlow: {
         return createOpenAI({
-          baseURL: "https://api.deepseek.com/v1",
-          apiKey: apiKey,
+          apiKey,
+          baseURL: ProviderMap[provider].baseURL,
         });
       }
 
-      case "mistral": {
-        const { mistral } = require("@ai-sdk/mistral");
-        return mistral({
-          apiKey: apiKey,
-        });
-      }
-
-      case "xai": {
-        const { createOpenAI } = require("@ai-sdk/openai");
-        return createOpenAI({
-          baseURL: "https://api.x.ai/v1",
-          apiKey: apiKey,
-        });
-      }
-
-      case "cerebras": {
-        const { createOpenAI } = require("@ai-sdk/openai");
+      case Provider.Cerebras: {
         return createOpenAI({
           baseURL: "https://api.cerebras.ai/v1",
-          apiKey: apiKey,
+          apiKey,
         });
       }
 
@@ -621,7 +846,7 @@ class AIService {
   async streamResponse(
     message: string,
     context?: string,
-    conversationHistory: { role: "user" | "assistant"; content: string }[] = []
+    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
   ): Promise<ReadableStream<string>> {
     if (!this.isConfigured() || !this.config) {
       throw new Error("AI service not configured");
@@ -674,7 +899,7 @@ class AIService {
           if (toolCalls && toolCalls.length > 0) {
             console.log(
               "MCP tools used:",
-              toolCalls.map((tc: any) => tc.toolName)
+              toolCalls.map((tc: any) => tc.toolName),
             );
           }
         };
@@ -704,7 +929,7 @@ class AIService {
   async streamResponseWithMCP(
     message: string,
     context?: string,
-    conversationHistory: { role: "user" | "assistant"; content: string }[] = []
+    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
   ): Promise<ReadableStream<string>> {
     // This method is identical to streamResponse but with explicit MCP emphasis
     return this.streamResponse(message, context, conversationHistory);
@@ -818,7 +1043,7 @@ class AIService {
   // Summarize web page content
   async summarizeWebPage(
     content: string,
-    url: string
+    url: string,
   ): Promise<WebPageSummary> {
     if (!this.isConfigured() || !this.config) {
       throw new Error("AI service not configured");
@@ -862,7 +1087,7 @@ Please provide:
   async generateSearchSuggestions(
     input: string,
     historyItems: string[] = [],
-    bookmarks: string[] = []
+    bookmarks: string[] = [],
   ): Promise<SearchSuggestion[]> {
     if (!this.isConfigured() || !this.config) {
       // Fallback to simple suggestions without AI
@@ -908,7 +1133,7 @@ Return JSON array of suggestions with title, url, and type.`;
   private generateFallbackSuggestions(
     input: string,
     historyItems: string[],
-    bookmarks: string[]
+    bookmarks: string[],
   ): SearchSuggestion[] {
     const suggestions: SearchSuggestion[] = [];
 
@@ -962,7 +1187,7 @@ Return JSON array of suggestions with title, url, and type.`;
   // Translate text
   async translateText(
     text: string,
-    targetLanguage: string = "en"
+    targetLanguage: string = "en",
   ): Promise<string> {
     if (!this.isConfigured() || !this.config) {
       throw new Error("AI service not configured");
@@ -1000,7 +1225,7 @@ Provide only the translation, no explanations.`;
     } catch (_) {
       // Check if it could be a domain without protocol
       return /^[a-zA-Z0-9][a-zA-Z0-9-]{1,61}[a-zA-Z0-9]\.[a-zA-Z]{2,}/.test(
-        string
+        string,
       );
     }
   }
