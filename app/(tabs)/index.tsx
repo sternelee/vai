@@ -1660,6 +1660,7 @@ const styles = StyleSheet.create({
   },
   webViewContainer: {
     flex: 1,
+    display: "none",
   },
   webViewWrapper: {
     flex: 1,

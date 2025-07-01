@@ -529,9 +529,15 @@ export default function BrowserWebView({
     <View style={[styles.container, { display: isActive ? "flex" : "none" }]}>
       <WebView
         ref={webViewRef}
-        source={{
-          uri: initialUrl.startsWith("vai://") ? "about:blank" : currentUrl,
-        }}
+        source={
+          initialUrl.startsWith("vai://")
+            ? undefined
+            : {
+                uri: initialUrl.startsWith("vai://")
+                  ? "about:blank"
+                  : currentUrl,
+              }
+        }
         style={styles.webview}
         onNavigationStateChange={handleNavigationStateChange}
         onLoadStart={handleLoadStart}

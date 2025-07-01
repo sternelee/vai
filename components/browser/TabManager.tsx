@@ -52,7 +52,7 @@ export default function TabManager({
   const isDark = colorScheme === "dark";
 
   const [showActions, setShowActions] = useState(false);
-  const translateX = useRef(new Animated.Value(0)).current;
+  // const translateX = useRef(new Animated.Value(0)).current;
 
   const handleTabClose = (tabId: string) => {
     if (tabs.length <= 1) {
@@ -522,4 +522,3 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 });
-
