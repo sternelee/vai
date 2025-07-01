@@ -1,5 +1,4 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { fetch } from "expo/fetch";
 import {
   CoreMessage,
   generateText,
@@ -601,18 +600,18 @@ class AIService {
   private providerFactories = {
     [Provider.OpenAI]: (config: AIConfig) =>
       // @ts-ignore
-      createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL, fetch }),
+      createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL }),
     [Provider.Anthropic]: (config: AIConfig) =>
       // @ts-ignore
-      createAnthropic({ apiKey: config.apiKey, fetch }),
+      createAnthropic({ apiKey: config.apiKey }),
     [Provider.Google]: (config: AIConfig) =>
       // @ts-ignore
-      createGoogleGenerativeAI({ apiKey: config.apiKey, fetch }),
+      createGoogleGenerativeAI({ apiKey: config.apiKey }),
     [Provider.Groq]: (config: AIConfig) =>
       createGroq({ apiKey: config.apiKey }),
     [Provider.DeepSeek]: (config: AIConfig) =>
       // @ts-ignore
-      createDeepSeek({ apiKey: config.apiKey, fetch }),
+      createDeepSeek({ apiKey: config.apiKey }),
     [Provider.Mistral]: (config: AIConfig) =>
       createMistral({ apiKey: config.apiKey }),
     [Provider.XAI]: (config: AIConfig) => createXai({ apiKey: config.apiKey }),
@@ -761,6 +760,7 @@ class AIService {
         conversationHistory,
       );
       const result = await streamText(streamConfig);
+      console.log("Stream result:", result);
 
       return new ReadableStream({
         async start(controller) {
