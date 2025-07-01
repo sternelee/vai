@@ -1,4 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import EventSource from "react-native-sse";
 
 // MCP Protocol Types
 export interface MCPMessage {
