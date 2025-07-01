@@ -12,14 +12,14 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
-import Modal from "react-native-modal";
 import DatabaseService from "../../services/DatabaseService";
 import type { Message } from "../../types/chat";
 
 interface AIChatPanelProps {
-  isVisible: boolean;
+  visible: boolean;
   onClose: () => void;
   currentPageTitle: string;
   currentPageUrl: string;
@@ -34,7 +34,7 @@ interface AIChatPanelProps {
 }
 
 export default function AIChatPanel({
-  isVisible,
+  visible,
   onClose,
   currentPageTitle,
   currentPageUrl,
@@ -59,10 +59,10 @@ export default function AIChatPanel({
 
   // Initialize or load chat session
   useEffect(() => {
-    if (isVisible && !currentSessionId) {
+    if (visible && !currentSessionId) {
       initializeChatSession();
     }
-  }, [isVisible, currentPageUrl]);
+  }, [visible, currentPageUrl]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -75,16 +75,16 @@ export default function AIChatPanel({
 
   // Set initial message when selected text is provided
   useEffect(() => {
-    if (selectedText && isVisible) {
+    if (selectedText && visible) {
       setInputText(`Can you explain this text: "${selectedText}"`);
-    } else if (isVisible && !selectedText && currentPageContent) {
+    } else if (visible && !selectedText && currentPageContent) {
       setInputText(
         `Please analyze this page: ${currentPageTitle || currentPageUrl}`,
       );
     }
   }, [
     selectedText,
-    isVisible,
+    visible,
     currentPageContent,
     currentPageTitle,
     currentPageUrl,
@@ -421,14 +421,9 @@ export default function AIChatPanel({
 
   return (
     <Modal
-      isVisible={isVisible}
-      onBackdropPress={onClose}
-      onSwipeComplete={onClose}
-      swipeDirection="down"
-      style={styles.modal}
-      backdropOpacity={0.5}
-      useNativeDriver={true}
-      hideModalContentWhileAnimating={true}
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
       <KeyboardAvoidingView
         style={[

@@ -8,9 +8,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Modal,
   View,
 } from "react-native";
-import Modal from "react-native-modal";
 import { WebView } from "react-native-webview";
 
 // Components
@@ -1576,7 +1576,7 @@ export default function BrowserScreen() {
 
       {/* AI Chat Panel */}
       <AIChatPanel
-        isVisible={aiChatVisible}
+        visible={aiChatVisible}
         onClose={() => setAiChatVisible(false)}
         currentPageTitle={currentTab.title}
         currentPageUrl={currentTab.url}
@@ -1589,10 +1589,10 @@ export default function BrowserScreen() {
 
       {/* Tab Manager Modal */}
       <Modal
-        isVisible={tabManagerVisible}
-        onBackdropPress={() => setTabManagerVisible(false)}
+        visible={tabManagerVisible}
+        // onBackdropPress={() => setTabManagerVisible(false)}
         style={styles.fullScreenModal}
-        useNativeDriver={true}
+        // useNativeDriver={true}
       >
         <TabManager
           tabs={tabs}
@@ -1607,7 +1607,7 @@ export default function BrowserScreen() {
 
       {/* Download Manager */}
       <DownloadManager
-        isVisible={downloadManagerVisible}
+        visible={downloadManagerVisible}
         onClose={() => setDownloadManagerVisible(false)}
         downloads={downloads.map((download) => ({
           ...download,
@@ -1623,14 +1623,14 @@ export default function BrowserScreen() {
 
       {/* History Manager */}
       <HistoryManager
-        isVisible={historyVisible}
+        visible={historyVisible}
         onClose={() => setHistoryVisible(false)}
         onNavigateToUrl={handleHistoryNavigate}
       />
 
       {/* Bookmark Manager */}
       <BookmarkManager
-        isVisible={bookmarksVisible}
+        visible={bookmarksVisible}
         onClose={() => setBookmarksVisible(false)}
         onNavigateToUrl={handleBookmarkNavigate}
       />
@@ -1643,7 +1643,7 @@ export default function BrowserScreen() {
 
       {/* Resource Sniffer Modal */}
       <ResourceSniffer
-        isVisible={showResourceSniffer}
+        visible={showResourceSniffer}
         onClose={() => setShowResourceSniffer(false)}
         currentPageUrl={currentTab.url}
         currentPageTitle={currentTab.title}

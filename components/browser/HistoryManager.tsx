@@ -12,17 +12,17 @@ import {
   TextInput,
   TouchableOpacity,
   View,
+  Modal,
 } from "react-native";
-import Modal from "react-native-modal";
 
 interface HistoryManagerProps {
-  isVisible: boolean;
+  visible: boolean;
   onClose: () => void;
   onNavigateToUrl: (url: string) => void;
 }
 
 export default function HistoryManager({
-  isVisible,
+  visible,
   onClose,
   onNavigateToUrl,
 }: HistoryManagerProps) {
@@ -36,10 +36,10 @@ export default function HistoryManager({
   const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
-    if (isVisible) {
+    if (visible) {
       loadHistory();
     }
-  }, [isVisible]);
+  }, [visible]);
 
   useEffect(() => {
     filterHistory();
@@ -272,14 +272,10 @@ export default function HistoryManager({
 
   return (
     <Modal
-      isVisible={isVisible}
-      onBackdropPress={onClose}
-      onSwipeComplete={onClose}
-      swipeDirection="down"
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
       style={styles.modal}
-      backdropOpacity={0.5}
-      useNativeDriver={true}
-      hideModalContentWhileAnimating={true}
     >
       <View
         style={[
@@ -568,4 +564,3 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
 });
-

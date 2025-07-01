@@ -10,9 +10,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Modal,
   View,
 } from "react-native";
-import Modal from "react-native-modal";
 
 export interface DownloadItem {
   id: string;
@@ -37,7 +37,7 @@ export interface DownloadItem {
 }
 
 interface DownloadManagerProps {
-  isVisible: boolean;
+  visible: boolean;
   onClose: () => void;
   downloads: DownloadItem[];
   onPauseDownload: (id: string) => void;
@@ -49,7 +49,7 @@ interface DownloadManagerProps {
 }
 
 export default function DownloadManager({
-  isVisible,
+  visible,
   onClose,
   downloads,
   onPauseDownload,
@@ -618,10 +618,9 @@ export default function DownloadManager({
 
   return (
     <Modal
-      isVisible={isVisible}
-      onBackdropPress={onClose}
-      style={styles.modal}
-      useNativeDriver={true}
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
       <View
         style={[
@@ -815,4 +814,3 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-

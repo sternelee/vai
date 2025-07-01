@@ -11,18 +11,18 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
+  Modal,
   View,
 } from "react-native";
-import Modal from "react-native-modal";
 
 interface BookmarkManagerProps {
-  isVisible: boolean;
+  visible: boolean;
   onClose: () => void;
   onNavigateToUrl: (url: string) => void;
 }
 
 export default function BookmarkManager({
-  isVisible,
+  visible,
   onClose,
   onNavigateToUrl,
 }: BookmarkManagerProps) {
@@ -49,11 +49,11 @@ export default function BookmarkManager({
   const [formFolder, setFormFolder] = useState("default");
 
   useEffect(() => {
-    if (isVisible) {
+    if (visible) {
       loadBookmarks();
       loadFolders();
     }
-  }, [isVisible]);
+  }, [visible]);
 
   useEffect(() => {
     loadBookmarksForFolder();
@@ -356,11 +356,9 @@ export default function BookmarkManager({
 
   const renderAddDialog = () => (
     <Modal
-      isVisible={showAddDialog}
-      onBackdropPress={closeDialog}
-      style={styles.dialogModal}
-      backdropOpacity={0.5}
-      useNativeDriver={true}
+      visible={showAddDialog}
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
       <View
         style={[
@@ -469,14 +467,9 @@ export default function BookmarkManager({
   return (
     <>
       <Modal
-        isVisible={isVisible}
-        onBackdropPress={onClose}
-        onSwipeComplete={onClose}
-        swipeDirection="down"
-        style={styles.modal}
-        backdropOpacity={0.5}
-        useNativeDriver={true}
-        hideModalContentWhileAnimating={true}
+        visible={visible}
+        animationType="slide"
+        presentationStyle="fullScreen"
       >
         <View
           style={[
@@ -870,4 +863,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-

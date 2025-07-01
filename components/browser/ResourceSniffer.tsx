@@ -11,9 +11,9 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  Modal,
   View,
 } from "react-native";
-import Modal from "react-native-modal";
 
 interface ResourceItem {
   id: string;
@@ -26,7 +26,7 @@ interface ResourceItem {
 }
 
 interface ResourceSnifferProps {
-  isVisible: boolean;
+  visible: boolean;
   onClose: () => void;
   currentPageUrl: string;
   currentPageTitle: string;
@@ -37,7 +37,7 @@ interface ResourceSnifferProps {
 const { width: screenWidth } = Dimensions.get("window");
 
 export default function ResourceSniffer({
-  isVisible,
+  visible,
   onClose,
   currentPageUrl,
   currentPageTitle,
@@ -70,10 +70,10 @@ export default function ResourceSniffer({
 
   // 当面板打开时自动扫描资源
   useEffect(() => {
-    if (isVisible) {
+    if (visible) {
       handleScanResources();
     }
-  }, [isVisible]);
+  }, [visible]);
 
   // 过滤资源
   useEffect(() => {
@@ -287,10 +287,10 @@ export default function ResourceSniffer({
 
   const renderPreviewModal = () => (
     <Modal
-      isVisible={!!previewResource}
-      onBackdropPress={() => setPreviewResource(null)}
+      visible={!!previewResource}
+      animationType="slide"
+      presentationStyle="pageSheet"
       style={styles.previewModal}
-      useNativeDriver={true}
     >
       <View
         style={[
@@ -353,13 +353,9 @@ export default function ResourceSniffer({
 
   return (
     <Modal
-      isVisible={isVisible}
-      onBackdropPress={onClose}
-      onSwipeComplete={onClose}
-      swipeDirection="down"
-      style={styles.modal}
-      backdropOpacity={0.5}
-      useNativeDriver={true}
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
     >
       <View
         style={[
@@ -701,4 +697,3 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
 });
-
