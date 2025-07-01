@@ -187,7 +187,7 @@ class MCPClient {
         prompts: {},
       },
       clientInfo: {
-        name: "VaiBrowser",
+        name: "Vai Browser",
         version: "1.0.0",
       },
     });

@@ -169,7 +169,7 @@ export default function AddressBar({
 
   const formatDisplayUrl = (url: string) => {
     if (!url || url === "about:blank") return "";
-    if (url.startsWith("vai://")) return "VaiBrowser 主页";
+    if (url.startsWith("vai://")) return "Vai Browser 主页";
 
     try {
       const urlObj = new URL(url);

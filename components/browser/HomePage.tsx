@@ -323,7 +323,7 @@ export default function HomePage({
             { color: isDark ? "#FFFFFF" : "#000000" },
           ]}
         >
-          欢迎使用 VaiBrowser
+          欢迎使用 Vai Browser
         </Text>
         <Text
           style={[

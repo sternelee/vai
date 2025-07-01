@@ -1,4 +1,4 @@
-# VaiBrowser - AI-Powered Mobile Browser
+# Vai Browser - AI-Powered Mobile Browser
 
 VaiBrowser is an intelligent mobile browser that combines the lightweight efficiency of Via Browser with advanced AI capabilities and cutting-edge features including performance optimization, user script support, and **Model Context Protocol (MCP) tools integration**.
 
@@ -27,10 +27,12 @@ VaiBrowser is an intelligent mobile browser that combines the lightweight effici
 #### Built-in Demo Servers
 
 1. **Weather Server** (Mock)
+
    - `get_weather`: Get current weather for any location
    - `get_forecast`: 5-day weather forecast
 
 2. **GitHub Server** (Mock)
+
    - `search_repositories`: Search GitHub repositories
    - `create_issue`: Create new GitHub issues
 
@@ -82,16 +84,20 @@ AI Assistant <-> VaiBrowser <-> MCP Service <-> External MCP Servers
 ```typescript
 class MCPService {
   // Server Management
-  async connectToServer(serverId: string): Promise<boolean>
-  async disconnectFromServer(serverId: string): Promise<void>
+  async connectToServer(serverId: string): Promise<boolean>;
+  async disconnectFromServer(serverId: string): Promise<void>;
 
   // Tool Management
-  async getAvailableTools(): Promise<Record<string, any>>
-  async executeTool(serverId: string, toolName: string, parameters: any): Promise<any>
+  async getAvailableTools(): Promise<Record<string, any>>;
+  async executeTool(
+    serverId: string,
+    toolName: string,
+    parameters: any,
+  ): Promise<any>;
 
   // Configuration
-  async addServer(config: MCPServerConfig): Promise<void>
-  async testServerConnection(config: MCPServerConfig): Promise<TestResult>
+  async addServer(config: MCPServerConfig): Promise<void>;
+  async testServerConnection(config: MCPServerConfig): Promise<TestResult>;
 }
 ```
 
@@ -104,11 +110,11 @@ const mcpTools = await mcpService.getAvailableTools();
 const result = await streamText({
   model,
   messages,
-  tools: mcpTools,      // 🔧 MCP tools included
-  maxSteps: 5,          // Multi-step tool usage
+  tools: mcpTools, // 🔧 MCP tools included
+  maxSteps: 5, // Multi-step tool usage
   onStepFinish: ({ toolCalls }) => {
-    console.log('MCP tools used:', toolCalls);
-  }
+    console.log("MCP tools used:", toolCalls);
+  },
 });
 ```
 
@@ -124,12 +130,14 @@ const result = await streamText({
 ### MCP Manager Interface
 
 1. **Servers Tab**: View and manage all MCP servers
+
    - Connection status (Connected/Connecting/Error/Disconnected)
    - Tool count per server
    - Last connected timestamp
    - Enable/disable toggles
 
 2. **Tools Tab**: Browse all available tools
+
    - Grouped by server
    - Tool descriptions and capabilities
    - Individual tool enable/disable
@@ -174,9 +182,9 @@ const serverConfig = {
   description: "Real-time weather data",
   url: "https://my-weather-mcp.example.com/sse",
   headers: {
-    "Authorization": "Bearer your-api-key"
+    Authorization: "Bearer your-api-key",
   },
-  enabled: true
+  enabled: true,
 };
 ```
 
@@ -250,4 +258,4 @@ VaiBrowser now supports the **complete AI ecosystem**:
 
 ---
 
-*VaiBrowser v1.0.0 - The Future of Intelligent Mobile Browsing*
+_VaiBrowser v1.0.0 - The Future of Intelligent Mobile Browsing_
