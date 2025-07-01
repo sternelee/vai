@@ -1,7 +1,7 @@
-import { DownloadItem } from '@/components/browser/DownloadManager';
-import * as FileSystem from 'expo-file-system';
-import * as MediaLibrary from 'expo-media-library';
-import databaseService from './DatabaseService';
+import { DownloadItem } from "@/components/browser/DownloadManager";
+import * as FileSystem from "expo-file-system";
+import * as MediaLibrary from "expo-media-library";
+import databaseService from "./DatabaseService";
 
 export interface DownloadOptions {
   url: string;
@@ -17,7 +17,8 @@ export interface DownloadProgress {
 
 class DownloadService {
   private downloads: Map<string, DownloadItem> = new Map();
-  private activeDownloads: Map<string, FileSystem.DownloadResumable> = new Map();
+  private activeDownloads: Map<string, FileSystem.DownloadResumable> =
+    new Map();
   private listeners: Set<(downloads: DownloadItem[]) => void> = new Set();
 
   constructor() {
@@ -30,7 +31,7 @@ class DownloadService {
       await this.loadDownloadsFromDB();
       await this.requestPermissions();
     } catch (error) {
-      console.error('Failed to initialize download service:', error);
+      console.error("Failed to initialize download service:", error);
     }
   }
 
@@ -38,9 +39,9 @@ class DownloadService {
   private async requestPermissions(): Promise<boolean> {
     try {
       const { status } = await MediaLibrary.requestPermissionsAsync();
-      return status === 'granted';
+      return status === "granted";
     } catch (error) {
-      console.error('Permission request failed:', error);
+      console.error("Permission request failed:", error);
       return false;
     }
   }
@@ -51,13 +52,13 @@ class DownloadService {
       const savedDownloads = await databaseService.getDownloads();
       this.downloads.clear();
 
-      savedDownloads.forEach(download => {
+      savedDownloads.forEach((download) => {
         this.downloads.set(download.id, download);
       });
 
       this.notifyListeners();
     } catch (error) {
-      console.error('Failed to load downloads from database:', error);
+      console.error("Failed to load downloads from database:", error);
     }
   }
 
@@ -66,7 +67,7 @@ class DownloadService {
     try {
       await databaseService.saveDownload(download);
     } catch (error) {
-      console.error('Failed to save download to database:', error);
+      console.error("Failed to save download to database:", error);
     }
   }
 
@@ -75,7 +76,7 @@ class DownloadService {
     try {
       await databaseService.removeDownload(id);
     } catch (error) {
-      console.error('Failed to remove download from database:', error);
+      console.error("Failed to remove download from database:", error);
     }
   }
 
@@ -88,10 +89,10 @@ class DownloadService {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname;
-      const filename = pathname.split('/').pop() || 'download';
+      const filename = pathname.split("/").pop() || "download";
 
       // Add extension if missing
-      if (!filename.includes('.')) {
+      if (!filename.includes(".")) {
         return `${filename}.bin`;
       }
 
@@ -132,7 +133,7 @@ class DownloadService {
         filename,
         fileSize: 0,
         downloadedSize: 0,
-        status: 'pending',
+        status: "pending",
         startTime: new Date().toISOString(),
         localPath,
         progress: 0,
@@ -150,13 +151,13 @@ class DownloadService {
         options.headers ? { headers: options.headers } : undefined,
         (downloadProgress: DownloadProgress) => {
           this.handleDownloadProgress(id, downloadProgress);
-        }
+        },
       );
 
       this.activeDownloads.set(id, downloadResumable);
 
       // Update status to downloading
-      this.updateDownloadStatus(id, { status: 'downloading' });
+      this.updateDownloadStatus(id, { status: "downloading" });
 
       try {
         const result = await downloadResumable.downloadAsync();
@@ -170,7 +171,7 @@ class DownloadService {
 
       return id;
     } catch (error) {
-      console.error('Failed to start download:', error);
+      console.error("Failed to start download:", error);
       throw error;
     }
   }
@@ -180,9 +181,10 @@ class DownloadService {
     const download = this.downloads.get(id);
     if (!download) return;
 
-    const progressRatio = progress.totalBytesExpectedToWrite > 0
-      ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite
-      : 0;
+    const progressRatio =
+      progress.totalBytesExpectedToWrite > 0
+        ? progress.totalBytesWritten / progress.totalBytesExpectedToWrite
+        : 0;
 
     const speed = this.calculateDownloadSpeed(id, progress.totalBytesWritten);
 
@@ -217,7 +219,7 @@ class DownloadService {
       const fileInfo = await FileSystem.getInfoAsync(uri);
 
       this.updateDownloadStatus(id, {
-        status: 'completed',
+        status: "completed",
         endTime: new Date().toISOString(),
         localPath: uri,
         fileSize: download.fileSize,
@@ -227,11 +229,14 @@ class DownloadService {
       });
 
       // Try to save to media library for images/videos
-      if (download.mimeType?.startsWith('image/') || download.mimeType?.startsWith('video/')) {
+      if (
+        download.mimeType?.startsWith("image/") ||
+        download.mimeType?.startsWith("video/")
+      ) {
         try {
           await MediaLibrary.saveToLibraryAsync(uri);
         } catch (error) {
-          console.log('Could not save to media library:', error);
+          console.log("Could not save to media library:", error);
         }
       }
 
@@ -247,7 +252,7 @@ class DownloadService {
     console.error(`Download ${id} failed:`, error);
 
     this.updateDownloadStatus(id, {
-      status: 'error',
+      status: "error",
       error: error.message,
       endTime: new Date().toISOString(),
     });
@@ -256,7 +261,10 @@ class DownloadService {
   }
 
   // Update download status
-  private updateDownloadStatus(id: string, updates: Partial<DownloadItem>): void {
+  private updateDownloadStatus(
+    id: string,
+    updates: Partial<DownloadItem>,
+  ): void {
     const download = this.downloads.get(id);
     if (!download) return;
 
@@ -276,9 +284,9 @@ class DownloadService {
 
     try {
       await activeDownload.pauseAsync();
-      this.updateDownloadStatus(id, { status: 'paused' });
+      this.updateDownloadStatus(id, { status: "paused" });
     } catch (error) {
-      console.error('Failed to pause download:', error);
+      console.error("Failed to pause download:", error);
     }
   }
 
@@ -289,9 +297,9 @@ class DownloadService {
 
     try {
       await activeDownload.resumeAsync();
-      this.updateDownloadStatus(id, { status: 'downloading' });
+      this.updateDownloadStatus(id, { status: "downloading" });
     } catch (error) {
-      console.error('Failed to resume download:', error);
+      console.error("Failed to resume download:", error);
       await this.handleDownloadError(id, error as Error);
     }
   }
@@ -306,7 +314,7 @@ class DownloadService {
         await activeDownload.pauseAsync();
         this.activeDownloads.delete(id);
       } catch (error) {
-        console.error('Failed to cancel download:', error);
+        console.error("Failed to cancel download:", error);
       }
     }
 
@@ -315,7 +323,7 @@ class DownloadService {
         // Delete the partial file
         await FileSystem.deleteAsync(download.localPath, { idempotent: true });
       } catch (error) {
-        console.log('Could not delete partial file:', error);
+        console.log("Could not delete partial file:", error);
       }
     }
 
@@ -332,7 +340,7 @@ class DownloadService {
 
     // Reset download state
     this.updateDownloadStatus(id, {
-      status: 'pending',
+      status: "pending",
       downloadedSize: 0,
       progress: 0,
       error: undefined,
@@ -352,7 +360,7 @@ class DownloadService {
     const completedIds: string[] = [];
 
     for (const [id, download] of this.downloads) {
-      if (download.status === 'completed') {
+      if (download.status === "completed") {
         completedIds.push(id);
       }
     }
@@ -383,8 +391,9 @@ class DownloadService {
 
   // Get all downloads
   getDownloads(): DownloadItem[] {
-    return Array.from(this.downloads.values()).sort((a, b) =>
-      new Date(b.startTime).getTime() - new Date(a.startTime).getTime()
+    return Array.from(this.downloads.values()).sort(
+      (a, b) =>
+        new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
     );
   }
 
@@ -408,11 +417,11 @@ class DownloadService {
   // Notify all listeners
   private notifyListeners(): void {
     const downloads = this.getDownloads();
-    this.listeners.forEach(listener => {
+    this.listeners.forEach((listener) => {
       try {
         listener(downloads);
       } catch (error) {
-        console.error('Download listener error:', error);
+        console.error("Download listener error:", error);
       }
     });
   }
@@ -425,15 +434,41 @@ class DownloadService {
 
       // Common downloadable extensions
       const downloadableExtensions = [
-        '.pdf', '.doc', '.docx', '.xls', '.xlsx', '.ppt', '.pptx',
-        '.zip', '.rar', '.7z', '.tar', '.gz',
-        '.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg',
-        '.mp4', '.avi', '.mov', '.mkv', '.mp3', '.wav', '.flac',
-        '.exe', '.dmg', '.pkg', '.deb', '.rpm',
-        '.apk', '.ipa',
+        ".pdf",
+        ".doc",
+        ".docx",
+        ".xls",
+        ".xlsx",
+        ".ppt",
+        ".pptx",
+        ".zip",
+        ".rar",
+        ".7z",
+        ".tar",
+        ".gz",
+        ".jpg",
+        ".jpeg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".svg",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".mkv",
+        ".mp3",
+        ".wav",
+        ".flac",
+        ".exe",
+        ".dmg",
+        ".pkg",
+        ".deb",
+        ".rpm",
+        ".apk",
+        ".ipa",
       ];
 
-      return downloadableExtensions.some(ext => pathname.endsWith(ext));
+      return downloadableExtensions.some((ext) => pathname.endsWith(ext));
     } catch {
       return false;
     }
@@ -444,22 +479,55 @@ class DownloadService {
     try {
       const urlObj = new URL(url);
       const pathname = urlObj.pathname.toLowerCase();
-      const extension = pathname.split('.').pop();
+      const extension = pathname.split(".").pop();
 
       switch (extension) {
-        case 'pdf': return 'document';
-        case 'doc': case 'docx': case 'txt': return 'document';
-        case 'xls': case 'xlsx': return 'spreadsheet';
-        case 'ppt': case 'pptx': return 'presentation';
-        case 'zip': case 'rar': case '7z': case 'tar': case 'gz': return 'archive';
-        case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp': case 'svg': return 'image';
-        case 'mp4': case 'avi': case 'mov': case 'mkv': return 'video';
-        case 'mp3': case 'wav': case 'flac': case 'm4a': return 'audio';
-        case 'exe': case 'dmg': case 'pkg': case 'deb': case 'rpm': return 'application';
-        default: return 'file';
+        case "pdf":
+          return "document";
+        case "doc":
+        case "docx":
+        case "txt":
+          return "document";
+        case "xls":
+        case "xlsx":
+          return "spreadsheet";
+        case "ppt":
+        case "pptx":
+          return "presentation";
+        case "zip":
+        case "rar":
+        case "7z":
+        case "tar":
+        case "gz":
+          return "archive";
+        case "jpg":
+        case "jpeg":
+        case "png":
+        case "gif":
+        case "webp":
+        case "svg":
+          return "image";
+        case "mp4":
+        case "avi":
+        case "mov":
+        case "mkv":
+          return "video";
+        case "mp3":
+        case "wav":
+        case "flac":
+        case "m4a":
+          return "audio";
+        case "exe":
+        case "dmg":
+        case "pkg":
+        case "deb":
+        case "rpm":
+          return "application";
+        default:
+          return "file";
       }
     } catch {
-      return 'file';
+      return "file";
     }
   }
 }

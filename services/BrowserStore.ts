@@ -1,5 +1,5 @@
-import { BehaviorSubject, Subject } from 'rxjs';
-import { v4 as uuidv4 } from 'uuid';
+import { BehaviorSubject, Subject } from "rxjs";
+import { v4 as uuidv4 } from "uuid";
 
 export interface Tab {
   id: string;
@@ -21,7 +21,11 @@ export interface BrowserState {
   addressBarQuery: string;
   searchSuggestions: any[];
   aiChatVisible: boolean;
-  aiChatMessages: { role: 'user' | 'assistant'; content: string; timestamp: number }[];
+  aiChatMessages: {
+    role: "user" | "assistant";
+    content: string;
+    timestamp: number;
+  }[];
 }
 
 class BrowserStore {
@@ -30,7 +34,7 @@ class BrowserStore {
     activeTabId: null,
     isIncognito: false,
     showAddressBar: true,
-    addressBarQuery: '',
+    addressBarQuery: "",
     searchSuggestions: [],
     aiChatVisible: false,
     aiChatMessages: [],
@@ -51,7 +55,7 @@ class BrowserStore {
 
   constructor() {
     // Create initial tab
-    this.createNewTab('https://www.google.com');
+    this.createNewTab("https://www.google.com");
   }
 
   private updateState(updates: Partial<BrowserState>) {
@@ -60,18 +64,18 @@ class BrowserStore {
   }
 
   private updateTab(tabId: string, updates: Partial<Tab>) {
-    const tabs = this.state.tabs.map(tab =>
-      tab.id === tabId ? { ...tab, ...updates } : tab
+    const tabs = this.state.tabs.map((tab) =>
+      tab.id === tabId ? { ...tab, ...updates } : tab,
     );
     this.updateState({ tabs });
   }
 
   // Tab management
-  createNewTab(url: string = 'https://www.google.com'): string {
+  createNewTab(url: string = "https://www.google.com"): string {
     const newTab: Tab = {
       id: uuidv4(),
       url,
-      title: 'New Tab',
+      title: "New Tab",
       canGoBack: false,
       canGoForward: false,
       isLoading: false,
@@ -80,7 +84,7 @@ class BrowserStore {
     };
 
     // Deactivate all other tabs
-    const tabs = this.state.tabs.map(tab => ({ ...tab, isActive: false }));
+    const tabs = this.state.tabs.map((tab) => ({ ...tab, isActive: false }));
     tabs.push({ ...newTab, isActive: true });
 
     this.updateState({
@@ -95,7 +99,7 @@ class BrowserStore {
   }
 
   closeTab(tabId: string): void {
-    const tabs = this.state.tabs.filter(tab => tab.id !== tabId);
+    const tabs = this.state.tabs.filter((tab) => tab.id !== tabId);
     let activeTabId = this.state.activeTabId;
 
     // If closing the active tab, switch to another tab
@@ -115,7 +119,7 @@ class BrowserStore {
   }
 
   switchToTab(tabId: string): void {
-    const tabs = this.state.tabs.map(tab => ({
+    const tabs = this.state.tabs.map((tab) => ({
       ...tab,
       isActive: tab.id === tabId,
     }));
@@ -164,7 +168,11 @@ class BrowserStore {
     });
   }
 
-  updateTabNavigationState(tabId: string, canGoBack: boolean, canGoForward: boolean): void {
+  updateTabNavigationState(
+    tabId: string,
+    canGoBack: boolean,
+    canGoForward: boolean,
+  ): void {
     this.updateTab(tabId, { canGoBack, canGoForward });
   }
 
@@ -199,7 +207,7 @@ class BrowserStore {
     this.updateState({ aiChatVisible: !this.state.aiChatVisible });
   }
 
-  addAiChatMessage(role: 'user' | 'assistant', content: string): void {
+  addAiChatMessage(role: "user" | "assistant", content: string): void {
     const newMessage = {
       role,
       content,
@@ -216,7 +224,9 @@ class BrowserStore {
 
   // Getters
   getCurrentTab(): Tab | null {
-    return this.state.tabs.find(tab => tab.id === this.state.activeTabId) || null;
+    return (
+      this.state.tabs.find((tab) => tab.id === this.state.activeTabId) || null
+    );
   }
 
   getTabCount(): number {
@@ -224,7 +234,7 @@ class BrowserStore {
   }
 
   getTabById(tabId: string): Tab | null {
-    return this.state.tabs.find(tab => tab.id === tabId) || null;
+    return this.state.tabs.find((tab) => tab.id === tabId) || null;
   }
 
   getAllTabs(): Tab[] {
@@ -240,7 +250,7 @@ class BrowserStore {
     if (tab?.canGoBack) {
       // WebView will handle the actual navigation
       // We just emit the action
-      this.navigationSubject.next({ tabId: targetTabId, url: 'back' });
+      this.navigationSubject.next({ tabId: targetTabId, url: "back" });
     }
   }
 
@@ -251,7 +261,7 @@ class BrowserStore {
     const tab = this.getTabById(targetTabId);
     if (tab?.canGoForward) {
       // WebView will handle the actual navigation
-      this.navigationSubject.next({ tabId: targetTabId, url: 'forward' });
+      this.navigationSubject.next({ tabId: targetTabId, url: "forward" });
     }
   }
 
@@ -259,7 +269,7 @@ class BrowserStore {
     const targetTabId = tabId || this.state.activeTabId;
     if (!targetTabId) return;
 
-    this.navigationSubject.next({ tabId: targetTabId, url: 'reload' });
+    this.navigationSubject.next({ tabId: targetTabId, url: "reload" });
   }
 
   // Cleanup
@@ -271,4 +281,5 @@ class BrowserStore {
   }
 }
 
-export const browserStore = new BrowserStore(); 
+export const browserStore = new BrowserStore();
+

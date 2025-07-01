@@ -1,18 +1,18 @@
-import { useColorScheme } from '@/hooks/useColorScheme';
-import { Ionicons } from '@expo/vector-icons';
-import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
-import React, { useState } from 'react';
+import { useColorScheme } from "@/hooks/useColorScheme";
+import { Ionicons } from "@expo/vector-icons";
+import * as FileSystem from "expo-file-system";
+import * as Sharing from "expo-sharing";
+import React, { useState } from "react";
 import {
-    Alert,
-    FlatList,
-    RefreshControl,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import Modal from 'react-native-modal';
+  Alert,
+  FlatList,
+  RefreshControl,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Modal from "react-native-modal";
 
 export interface DownloadItem {
   id: string;
@@ -20,7 +20,13 @@ export interface DownloadItem {
   filename: string;
   fileSize: number;
   downloadedSize: number;
-  status: 'pending' | 'downloading' | 'completed' | 'paused' | 'error' | 'cancelled';
+  status:
+    | "pending"
+    | "downloading"
+    | "completed"
+    | "paused"
+    | "error"
+    | "cancelled";
   startTime: string;
   endTime?: string;
   localPath?: string;
@@ -54,22 +60,28 @@ export default function DownloadManager({
   onClearAll,
 }: DownloadManagerProps) {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
-  const [filter, setFilter] = useState<'all' | 'downloading' | 'completed' | 'failed'>('all');
+  const [filter, setFilter] = useState<
+    "all" | "downloading" | "completed" | "failed"
+  >("all");
   const [refreshing, setRefreshing] = useState(false);
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [selectionMode, setSelectionMode] = useState(false);
 
   // Filter downloads based on current filter
-  const filteredDownloads = downloads.filter(item => {
+  const filteredDownloads = downloads.filter((item) => {
     switch (filter) {
-      case 'downloading':
-        return item.status === 'downloading' || item.status === 'pending' || item.status === 'paused';
-      case 'completed':
-        return item.status === 'completed';
-      case 'failed':
-        return item.status === 'error' || item.status === 'cancelled';
+      case "downloading":
+        return (
+          item.status === "downloading" ||
+          item.status === "pending" ||
+          item.status === "paused"
+        );
+      case "completed":
+        return item.status === "completed";
+      case "failed":
+        return item.status === "error" || item.status === "cancelled";
       default:
         return true;
     }
@@ -78,9 +90,13 @@ export default function DownloadManager({
   // Calculate statistics
   const stats = {
     total: downloads.length,
-    downloading: downloads.filter(d => d.status === 'downloading' || d.status === 'pending').length,
-    completed: downloads.filter(d => d.status === 'completed').length,
-    failed: downloads.filter(d => d.status === 'error' || d.status === 'cancelled').length,
+    downloading: downloads.filter(
+      (d) => d.status === "downloading" || d.status === "pending",
+    ).length,
+    completed: downloads.filter((d) => d.status === "completed").length,
+    failed: downloads.filter(
+      (d) => d.status === "error" || d.status === "cancelled",
+    ).length,
     totalSize: downloads.reduce((sum, d) => sum + d.fileSize, 0),
     downloadedSize: downloads.reduce((sum, d) => sum + d.downloadedSize, 0),
   };
@@ -92,15 +108,15 @@ export default function DownloadManager({
   };
 
   const formatFileSize = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
+    if (bytes === 0) return "0 B";
     const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
   };
 
   const formatSpeed = (bytesPerSecond: number): string => {
-    return formatFileSize(bytesPerSecond) + '/s';
+    return formatFileSize(bytesPerSecond) + "/s";
   };
 
   const formatTime = (dateString: string): string => {
@@ -112,62 +128,93 @@ export default function DownloadManager({
     const start = new Date(startTime);
     const end = endTime ? new Date(endTime) : new Date();
     const duration = Math.floor((end.getTime() - start.getTime()) / 1000);
-    
+
     if (duration < 60) return `${duration}s`;
-    if (duration < 3600) return `${Math.floor(duration / 60)}m ${duration % 60}s`;
+    if (duration < 3600)
+      return `${Math.floor(duration / 60)}m ${duration % 60}s`;
     return `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
   };
 
   const getFileIcon = (filename: string, mimeType?: string): string => {
-    const extension = filename.split('.').pop()?.toLowerCase();
-    
-    if (mimeType?.startsWith('image/')) return 'image';
-    if (mimeType?.startsWith('video/')) return 'videocam';
-    if (mimeType?.startsWith('audio/')) return 'musical-notes';
-    if (mimeType?.includes('pdf')) return 'document-text';
-    
+    const extension = filename.split(".").pop()?.toLowerCase();
+
+    if (mimeType?.startsWith("image/")) return "image";
+    if (mimeType?.startsWith("video/")) return "videocam";
+    if (mimeType?.startsWith("audio/")) return "musical-notes";
+    if (mimeType?.includes("pdf")) return "document-text";
+
     switch (extension) {
-      case 'jpg': case 'jpeg': case 'png': case 'gif': case 'webp':
-        return 'image';
-      case 'mp4': case 'avi': case 'mov': case 'mkv':
-        return 'videocam';
-      case 'mp3': case 'wav': case 'flac': case 'm4a':
-        return 'musical-notes';
-      case 'pdf':
-        return 'document-text';
-      case 'zip': case 'rar': case '7z':
-        return 'archive';
-      case 'doc': case 'docx': case 'txt':
-        return 'document';
-      case 'xls': case 'xlsx':
-        return 'stats-chart';
-      case 'ppt': case 'pptx':
-        return 'easel';
+      case "jpg":
+      case "jpeg":
+      case "png":
+      case "gif":
+      case "webp":
+        return "image";
+      case "mp4":
+      case "avi":
+      case "mov":
+      case "mkv":
+        return "videocam";
+      case "mp3":
+      case "wav":
+      case "flac":
+      case "m4a":
+        return "musical-notes";
+      case "pdf":
+        return "document-text";
+      case "zip":
+      case "rar":
+      case "7z":
+        return "archive";
+      case "doc":
+      case "docx":
+      case "txt":
+        return "document";
+      case "xls":
+      case "xlsx":
+        return "stats-chart";
+      case "ppt":
+      case "pptx":
+        return "easel";
       default:
-        return 'document-outline';
+        return "document-outline";
     }
   };
 
-  const getStatusColor = (status: DownloadItem['status']): string => {
+  const getStatusColor = (status: DownloadItem["status"]): string => {
     switch (status) {
-      case 'downloading': return '#007AFF';
-      case 'completed': return '#4CAF50';
-      case 'paused': return '#FF9800';
-      case 'error': case 'cancelled': return '#FF3B30';
-      case 'pending': return '#8E8E93';
-      default: return isDark ? '#8E8E93' : '#6B6B6B';
+      case "downloading":
+        return "#007AFF";
+      case "completed":
+        return "#4CAF50";
+      case "paused":
+        return "#FF9800";
+      case "error":
+      case "cancelled":
+        return "#FF3B30";
+      case "pending":
+        return "#8E8E93";
+      default:
+        return isDark ? "#8E8E93" : "#6B6B6B";
     }
   };
 
-  const getStatusText = (status: DownloadItem['status']): string => {
+  const getStatusText = (status: DownloadItem["status"]): string => {
     switch (status) {
-      case 'downloading': return 'Downloading';
-      case 'completed': return 'Completed';
-      case 'paused': return 'Paused';
-      case 'error': return 'Failed';
-      case 'cancelled': return 'Cancelled';
-      case 'pending': return 'Pending';
-      default: return 'Unknown';
+      case "downloading":
+        return "Downloading";
+      case "completed":
+        return "Completed";
+      case "paused":
+        return "Paused";
+      case "error":
+        return "Failed";
+      case "cancelled":
+        return "Cancelled";
+      case "pending":
+        return "Pending";
+      default:
+        return "Unknown";
     }
   };
 
@@ -177,17 +224,20 @@ export default function DownloadManager({
       return;
     }
 
-    if (item.status === 'completed' && item.localPath) {
+    if (item.status === "completed" && item.localPath) {
       try {
         if ((await FileSystem.getInfoAsync(item.localPath)).exists) {
           // Try to open the file
           await Sharing.shareAsync(item.localPath);
         } else {
-          Alert.alert('File Not Found', 'The downloaded file could not be found.');
+          Alert.alert(
+            "File Not Found",
+            "The downloaded file could not be found.",
+          );
         }
       } catch (error) {
-        console.error('Error opening file:', error);
-        Alert.alert('Error', 'Could not open the file.');
+        console.error("Error opening file:", error);
+        Alert.alert("Error", "Could not open the file.");
       }
     }
   };
@@ -200,40 +250,38 @@ export default function DownloadManager({
   };
 
   const toggleSelection = (id: string) => {
-    setSelectedItems(prev => 
-      prev.includes(id) 
-        ? prev.filter(item => item !== id)
-        : [...prev, id]
+    setSelectedItems((prev) =>
+      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
     );
   };
 
   const handleActionPress = (item: DownloadItem, action: string) => {
     switch (action) {
-      case 'pause':
+      case "pause":
         onPauseDownload(item.id);
         break;
-      case 'resume':
+      case "resume":
         onResumeDownload(item.id);
         break;
-      case 'cancel':
+      case "cancel":
         Alert.alert(
-          'Cancel Download',
-          'Are you sure you want to cancel this download?',
+          "Cancel Download",
+          "Are you sure you want to cancel this download?",
           [
-            { text: 'No', style: 'cancel' },
-            { text: 'Yes', onPress: () => onCancelDownload(item.id) },
-          ]
+            { text: "No", style: "cancel" },
+            { text: "Yes", onPress: () => onCancelDownload(item.id) },
+          ],
         );
         break;
-      case 'retry':
+      case "retry":
         onRetryDownload(item.id);
         break;
-      case 'share':
+      case "share":
         if (item.localPath) {
           Sharing.shareAsync(item.localPath);
         }
         break;
-      case 'delete':
+      case "delete":
         handleDeleteDownload(item);
         break;
     }
@@ -241,25 +289,25 @@ export default function DownloadManager({
 
   const handleDeleteDownload = (item: DownloadItem) => {
     Alert.alert(
-      'Delete Download',
+      "Delete Download",
       `Delete "${item.filename}" from downloads?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Delete File', 
-          style: 'destructive',
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete File",
+          style: "destructive",
           onPress: async () => {
             if (item.localPath) {
               try {
                 await FileSystem.deleteAsync(item.localPath);
               } catch (error) {
-                console.log('Could not delete file:', error);
+                console.log("Could not delete file:", error);
               }
             }
             onCancelDownload(item.id);
-          }
+          },
         },
-      ]
+      ],
     );
   };
 
@@ -269,22 +317,30 @@ export default function DownloadManager({
   };
 
   const renderFilterTabs = () => (
-    <View style={[styles.filterTabs, { backgroundColor: isDark ? '#1C1C1E' : '#F2F2F7' }]}>
+    <View
+      style={[
+        styles.filterTabs,
+        { backgroundColor: isDark ? "#1C1C1E" : "#F2F2F7" },
+      ]}
+    >
       {[
-        { key: 'all', label: `All (${stats.total})` },
-        { key: 'downloading', label: `Active (${stats.downloading})` },
-        { key: 'completed', label: `Done (${stats.completed})` },
-        { key: 'failed', label: `Failed (${stats.failed})` },
-      ].map(tab => (
+        { key: "all", label: `All (${stats.total})` },
+        { key: "downloading", label: `Active (${stats.downloading})` },
+        { key: "completed", label: `Done (${stats.completed})` },
+        { key: "failed", label: `Failed (${stats.failed})` },
+      ].map((tab) => (
         <TouchableOpacity
           key={tab.key}
           style={[
             styles.filterTab,
             {
-              backgroundColor: filter === tab.key 
-                ? (isDark ? '#2C2C2E' : '#FFFFFF')
-                : 'transparent',
-            }
+              backgroundColor:
+                filter === tab.key
+                  ? isDark
+                    ? "#2C2C2E"
+                    : "#FFFFFF"
+                  : "transparent",
+            },
           ]}
           onPress={() => setFilter(tab.key as any)}
         >
@@ -292,11 +348,14 @@ export default function DownloadManager({
             style={[
               styles.filterTabText,
               {
-                color: filter === tab.key 
-                  ? '#007AFF'
-                  : (isDark ? '#8E8E93' : '#6B6B6B'),
-                fontWeight: filter === tab.key ? '600' : '400',
-              }
+                color:
+                  filter === tab.key
+                    ? "#007AFF"
+                    : isDark
+                      ? "#8E8E93"
+                      : "#6B6B6B",
+                fontWeight: filter === tab.key ? "600" : "400",
+              },
             ]}
           >
             {tab.label}
@@ -308,16 +367,20 @@ export default function DownloadManager({
 
   const renderDownloadItem = ({ item }: { item: DownloadItem }) => {
     const isSelected = selectedItems.includes(item.id);
-    
+
     return (
       <TouchableOpacity
         style={[
           styles.downloadItem,
           {
-            backgroundColor: isSelected 
-              ? (isDark ? '#2C2C2E' : '#E3F2FD')
-              : (isDark ? '#1C1C1E' : '#FFFFFF'),
-          }
+            backgroundColor: isSelected
+              ? isDark
+                ? "#2C2C2E"
+                : "#E3F2FD"
+              : isDark
+                ? "#1C1C1E"
+                : "#FFFFFF",
+          },
         ]}
         onPress={() => handleItemPress(item)}
         onLongPress={() => handleItemLongPress(item)}
@@ -332,13 +395,18 @@ export default function DownloadManager({
             <Ionicons
               name={isSelected ? "checkmark-circle" : "ellipse-outline"}
               size={24}
-              color={isSelected ? '#007AFF' : (isDark ? '#8E8E93' : '#6B6B6B')}
+              color={isSelected ? "#007AFF" : isDark ? "#8E8E93" : "#6B6B6B"}
             />
           </TouchableOpacity>
         )}
 
         {/* File Icon */}
-        <View style={[styles.fileIcon, { backgroundColor: isDark ? '#2C2C2E' : '#F2F2F7' }]}>
+        <View
+          style={[
+            styles.fileIcon,
+            { backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7" },
+          ]}
+        >
           <Ionicons
             name={getFileIcon(item.filename, item.mimeType) as any}
             size={24}
@@ -349,46 +417,69 @@ export default function DownloadManager({
         {/* Download Info */}
         <View style={styles.downloadInfo}>
           <Text
-            style={[styles.filename, { color: isDark ? '#FFFFFF' : '#000000' }]}
+            style={[styles.filename, { color: isDark ? "#FFFFFF" : "#000000" }]}
             numberOfLines={1}
           >
             {item.filename}
           </Text>
-          
+
           <View style={styles.downloadDetails}>
-            <Text style={[styles.statusText, { color: getStatusColor(item.status) }]}>
+            <Text
+              style={[
+                styles.statusText,
+                { color: getStatusColor(item.status) },
+              ]}
+            >
               {getStatusText(item.status)}
             </Text>
-            
-            {item.status === 'downloading' && item.speed && (
-              <Text style={[styles.detailText, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
+
+            {item.status === "downloading" && item.speed && (
+              <Text
+                style={[
+                  styles.detailText,
+                  { color: isDark ? "#8E8E93" : "#6B6B6B" },
+                ]}
+              >
                 • {formatSpeed(item.speed)}
               </Text>
             )}
-            
-            <Text style={[styles.detailText, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
-              • {formatFileSize(item.downloadedSize)}{item.fileSize > 0 && ` / ${formatFileSize(item.fileSize)}`}
+
+            <Text
+              style={[
+                styles.detailText,
+                { color: isDark ? "#8E8E93" : "#6B6B6B" },
+              ]}
+            >
+              • {formatFileSize(item.downloadedSize)}
+              {item.fileSize > 0 && ` / ${formatFileSize(item.fileSize)}`}
             </Text>
           </View>
 
           {/* Progress Bar */}
-          {(item.status === 'downloading' || item.status === 'paused') && (
-            <View style={[styles.progressContainer, { backgroundColor: isDark ? '#2C2C2E' : '#E5E5EA' }]}>
+          {(item.status === "downloading" || item.status === "paused") && (
+            <View
+              style={[
+                styles.progressContainer,
+                { backgroundColor: isDark ? "#2C2C2E" : "#E5E5EA" },
+              ]}
+            >
               <View
                 style={[
                   styles.progressBar,
                   {
                     width: `${item.progress * 100}%`,
                     backgroundColor: getStatusColor(item.status),
-                  }
+                  },
                 ]}
               />
             </View>
           )}
 
           {/* Time Info */}
-          <Text style={[styles.timeText, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
-            {item.status === 'completed' 
+          <Text
+            style={[styles.timeText, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
+          >
+            {item.status === "completed"
               ? `Completed ${formatTime(item.endTime || item.startTime)}`
               : `Started ${formatTime(item.startTime)}`}
           </Text>
@@ -396,45 +487,45 @@ export default function DownloadManager({
 
         {/* Action Buttons */}
         <View style={styles.actionButtons}>
-          {item.status === 'downloading' && (
+          {item.status === "downloading" && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleActionPress(item, 'pause')}
+              onPress={() => handleActionPress(item, "pause")}
             >
               <Ionicons name="pause" size={20} color="#FF9800" />
             </TouchableOpacity>
           )}
-          
-          {item.status === 'paused' && (
+
+          {item.status === "paused" && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleActionPress(item, 'resume')}
+              onPress={() => handleActionPress(item, "resume")}
             >
               <Ionicons name="play" size={20} color="#007AFF" />
             </TouchableOpacity>
           )}
-          
-          {(item.status === 'error' || item.status === 'cancelled') && (
+
+          {(item.status === "error" || item.status === "cancelled") && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleActionPress(item, 'retry')}
+              onPress={() => handleActionPress(item, "retry")}
             >
               <Ionicons name="refresh" size={20} color="#007AFF" />
             </TouchableOpacity>
           )}
-          
-          {item.status === 'completed' && item.localPath && (
+
+          {item.status === "completed" && item.localPath && (
             <TouchableOpacity
               style={styles.actionButton}
-              onPress={() => handleActionPress(item, 'share')}
+              onPress={() => handleActionPress(item, "share")}
             >
               <Ionicons name="share" size={20} color="#007AFF" />
             </TouchableOpacity>
           )}
-          
+
           <TouchableOpacity
             style={styles.actionButton}
-            onPress={() => handleActionPress(item, 'delete')}
+            onPress={() => handleActionPress(item, "delete")}
           >
             <Ionicons name="trash" size={20} color="#FF3B30" />
           </TouchableOpacity>
@@ -444,12 +535,22 @@ export default function DownloadManager({
   };
 
   const renderHeader = () => (
-    <View style={[styles.header, { backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF' }]}>
+    <View
+      style={[
+        styles.header,
+        { backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF" },
+      ]}
+    >
       <View style={styles.headerContent}>
-        <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#000000' }]}>
+        <Text
+          style={[
+            styles.headerTitle,
+            { color: isDark ? "#FFFFFF" : "#000000" },
+          ]}
+        >
           Downloads
         </Text>
-        
+
         <View style={styles.headerActions}>
           {selectionMode ? (
             <>
@@ -457,7 +558,7 @@ export default function DownloadManager({
                 style={styles.headerButton}
                 onPress={exitSelectionMode}
               >
-                <Text style={[styles.headerButtonText, { color: '#007AFF' }]}>
+                <Text style={[styles.headerButtonText, { color: "#007AFF" }]}>
                   Cancel
                 </Text>
               </TouchableOpacity>
@@ -469,24 +570,28 @@ export default function DownloadManager({
                 onPress={onClearCompleted}
                 disabled={stats.completed === 0}
               >
-                <Text style={[
-                  styles.headerButtonText,
-                  { 
-                    color: stats.completed > 0 ? '#007AFF' : (isDark ? '#8E8E93' : '#6B6B6B'),
-                  }
-                ]}>
+                <Text
+                  style={[
+                    styles.headerButtonText,
+                    {
+                      color:
+                        stats.completed > 0
+                          ? "#007AFF"
+                          : isDark
+                            ? "#8E8E93"
+                            : "#6B6B6B",
+                    },
+                  ]}
+                >
                   Clear
                 </Text>
               </TouchableOpacity>
-              
-              <TouchableOpacity
-                style={styles.headerButton}
-                onPress={onClose}
-              >
+
+              <TouchableOpacity style={styles.headerButton} onPress={onClose}>
                 <Ionicons
                   name="close"
                   size={24}
-                  color={isDark ? '#FFFFFF' : '#000000'}
+                  color={isDark ? "#FFFFFF" : "#000000"}
                 />
               </TouchableOpacity>
             </>
@@ -497,8 +602,14 @@ export default function DownloadManager({
       {/* Statistics */}
       {stats.total > 0 && (
         <View style={styles.statsContainer}>
-          <Text style={[styles.statsText, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
-            {formatFileSize(stats.downloadedSize)} of {formatFileSize(stats.totalSize)} downloaded
+          <Text
+            style={[
+              styles.statsText,
+              { color: isDark ? "#8E8E93" : "#6B6B6B" },
+            ]}
+          >
+            {formatFileSize(stats.downloadedSize)} of{" "}
+            {formatFileSize(stats.totalSize)} downloaded
           </Text>
         </View>
       )}
@@ -512,10 +623,15 @@ export default function DownloadManager({
       style={styles.modal}
       useNativeDriver={true}
     >
-      <View style={[styles.container, { backgroundColor: isDark ? '#000000' : '#F2F2F7' }]}>
+      <View
+        style={[
+          styles.container,
+          { backgroundColor: isDark ? "#000000" : "#F2F2F7" },
+        ]}
+      >
         {renderHeader()}
         {renderFilterTabs()}
-        
+
         <FlatList
           data={filteredDownloads}
           renderItem={renderDownloadItem}
@@ -527,7 +643,7 @@ export default function DownloadManager({
             <RefreshControl
               refreshing={refreshing}
               onRefresh={onRefresh}
-              tintColor={isDark ? '#FFFFFF' : '#000000'}
+              tintColor={isDark ? "#FFFFFF" : "#000000"}
             />
           }
           ListEmptyComponent={
@@ -535,10 +651,17 @@ export default function DownloadManager({
               <Ionicons
                 name="download-outline"
                 size={64}
-                color={isDark ? '#8E8E93' : '#6B6B6B'}
+                color={isDark ? "#8E8E93" : "#6B6B6B"}
               />
-              <Text style={[styles.emptyText, { color: isDark ? '#8E8E93' : '#6B6B6B' }]}>
-                {filter === 'all' ? 'No downloads yet' : `No ${filter} downloads`}
+              <Text
+                style={[
+                  styles.emptyText,
+                  { color: isDark ? "#8E8E93" : "#6B6B6B" },
+                ]}
+              >
+                {filter === "all"
+                  ? "No downloads yet"
+                  : `No ${filter} downloads`}
               </Text>
             </View>
           }
@@ -560,20 +683,20 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingVertical: 16,
     borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#E5E5EA',
+    borderBottomColor: "#E5E5EA",
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   headerTitle: {
     fontSize: 20,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   headerActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   headerButton: {
     padding: 4,
@@ -581,7 +704,7 @@ const styles = StyleSheet.create({
   },
   headerButtonText: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   statsContainer: {
     marginTop: 8,
@@ -590,7 +713,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   filterTabs: {
-    flexDirection: 'row',
+    flexDirection: "row",
     paddingHorizontal: 16,
     paddingVertical: 8,
   },
@@ -603,7 +726,7 @@ const styles = StyleSheet.create({
   },
   filterTabText: {
     fontSize: 14,
-    textAlign: 'center',
+    textAlign: "center",
   },
   downloadsList: {
     flex: 1,
@@ -612,12 +735,12 @@ const styles = StyleSheet.create({
     padding: 16,
   },
   downloadItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: {
       width: 0,
       height: 1,
@@ -633,8 +756,8 @@ const styles = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginRight: 12,
   },
   downloadInfo: {
@@ -643,17 +766,17 @@ const styles = StyleSheet.create({
   },
   filename: {
     fontSize: 16,
-    fontWeight: '500',
+    fontWeight: "500",
     marginBottom: 4,
   },
   downloadDetails: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   statusText: {
     fontSize: 14,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   detailText: {
     fontSize: 14,
@@ -665,15 +788,15 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressBar: {
-    height: '100%',
+    height: "100%",
     borderRadius: 2,
   },
   timeText: {
     fontSize: 12,
   },
   actionButtons: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginLeft: 12,
   },
   actionButton: {
@@ -682,13 +805,14 @@ const styles = StyleSheet.create({
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     paddingVertical: 64,
   },
   emptyText: {
     fontSize: 16,
     marginTop: 16,
-    textAlign: 'center',
+    textAlign: "center",
   },
-}); 
+});
+

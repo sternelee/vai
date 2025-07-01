@@ -544,44 +544,7 @@ class MCPService {
   }
 
   private getDefaultServers(): MCPServer[] {
-    return [
-      {
-        id: "filesystem-server",
-        name: "File System MCP Server",
-        description: "Access and manage local file system",
-        url: "http://localhost:3001/sse",
-        enabled: false,
-        status: "disconnected",
-        tools: [],
-        resources: [],
-        prompts: [],
-      },
-      {
-        id: "web-search-server",
-        name: "Web Search MCP Server",
-        description: "Search the web and get page content",
-        url: "http://localhost:3002/sse",
-        enabled: false,
-        status: "disconnected",
-        tools: [],
-        resources: [],
-        prompts: [],
-      },
-      {
-        id: "database-server",
-        name: "Database MCP Server",
-        description: "Query and manage databases",
-        url: "http://localhost:3003/sse",
-        enabled: false,
-        status: "disconnected",
-        tools: [],
-        resources: [],
-        prompts: [],
-        headers: {
-          Authorization: "Bearer YOUR_API_KEY",
-        },
-      },
-    ];
+    return [];
   }
 
   async saveServers(): Promise<void> {
@@ -1138,4 +1101,3 @@ class MCPService {
 }
 
 export const mcpService = new MCPService();
-

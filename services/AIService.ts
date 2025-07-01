@@ -17,6 +17,16 @@ import { createGoogleGenerativeAI } from "@ai-sdk/google";
 import { createAzure } from "@ai-sdk/azure";
 import { mcpService } from "./MCPService";
 
+class AIError extends Error {
+  constructor(
+    message: string,
+    public originalError?: Error,
+  ) {
+    super(message);
+    this.name = "AIError";
+  }
+}
+
 export enum Provider {
   OpenAI = "openai",
   Anthropic = "anthropic",
@@ -35,174 +45,43 @@ export enum Provider {
 
 export const ProviderMap = {
   [Provider.OpenAI]: {
-    models: [
-      "o1",
-      "o1-mini",
-      "o1-preview",
-      "o3-mini",
-      "o3",
-      "o4-mini",
-      "gpt-4.1",
-      "gpt-4.1-mini",
-      "gpt-4.1-nano",
-      "gpt-4o",
-      "gpt-4o-mini",
-      "gpt-4-turbo",
-      "gpt-4-turbo-preview",
-      "gpt-4-0125-preview",
-      "gpt-4-1106-preview",
-      "gpt-4",
-      "gpt-4-0613",
-      "gpt-4.5-preview",
-      "gpt-4.5-preview-2025-02-27",
-      "gpt-3.5-turbo-0125",
-      "gpt-3.5-turbo",
-      "gpt-3.5-turbo-1106",
-      "chatgpt-4o-latest",
-    ],
     apiKey: "OPENAI_API_KEY",
-    baseURL: "https://api.openai.com/v1",
+    // baseURL: "https://api.openai.com/v1",
   },
   [Provider.Anthropic]: {
-    models: [
-      "claude-3-7-sonnet-20250219",
-      "claude-3-5-sonnet-latest",
-      "claude-3-5-sonnet-20241022",
-      "claude-3-5-sonnet-20240620",
-      "claude-3-5-haiku-latest",
-      "claude-3-5-haiku-20241022",
-      "claude-3-opus-latest",
-      "claude-3-opus-20240229",
-      "claude-3-sonnet-20240229",
-      "claude-3-haiku-20240307",
-    ],
     apiKey: "ANTHROPIC_API_KEY",
-    baseURL: "https://api.anthropic.com/v1",
+    // baseURL: "https://api.anthropic.com/v1",
   },
   [Provider.Groq]: {
-    models: [
-      "gemma2-9b-it",
-      "llama-3.3-70b-versatile",
-      "llama-3.1-8b-instant",
-      "llama-guard-3-8b",
-      "llama3-70b-8192",
-      "llama3-8b-8192",
-      "mixtral-8x7b-32768",
-      "meta-llama/llama-4-scout-17b-16e-instruct",
-      "qwen-qwq-32b",
-      "mistral-saba-24b",
-      "qwen-2.5-32b",
-      "deepseek-r1-distill-qwen-32b",
-      "deepseek-r1-distill-llama-70b",
-    ],
     apiKey: "GROQ_API_KEY",
-    baseURL: "https://api.groq.com/v1",
+    // baseURL: "https://api.groq.com/v1",
   },
   [Provider.XAI]: {
-    models: [
-      "grok-3",
-      "grok-3-latest",
-      "grok-3-fast",
-      "grok-3-fast-latest",
-      "grok-3-mini",
-      "grok-3-mini-latest",
-      "grok-3-mini-fast",
-      "grok-3-mini-fast-latest",
-      "grok-2-vision-1212",
-      "grok-2-vision",
-      "grok-2-vision-latest",
-      "grok-2-image-1212",
-      "grok-2-image",
-      "grok-2-image-latest",
-      "grok-2-1212",
-      "grok-2",
-      "grok-2-latest",
-      "grok-vision-beta",
-      "grok-beta",
-    ],
     apiKey: "XAI_API_KEY",
-    baseURL: "https://api.xai.com/v1",
+    // baseURL: "https://api.xai.com/v1",
   },
   [Provider.DeepSeek]: {
-    models: ["deepseek-chat", "deepseek-reasoner"],
     apiKey: "DEEPSEEK_API_KEY",
-    baseURL: "https://api.deepseek.com/v1",
+    // baseURL: "https://api.deepseek.com/v1",
   },
   [Provider.Zhipu]: {
-    models: [
-      "glm-4-plus",
-      "glm-4-air-0111",
-      "glm-4-air",
-      "glm-4-airx",
-      "glm-4-long",
-      "glm-4-flash",
-      "glm-4-flashx",
-      "glm-4v-plus-0111",
-      "glm-4v-plus",
-      "glm-4v",
-      "glm-4v-flash",
-      "glm-zero-preview",
-    ],
     apiKey: "ZHIPU_API_KEY",
-    baseURL: "https://api.zhipu.com/v1",
+    // baseURL: "https://api.zhipu.com/v1",
   },
   [Provider.OpenRouter]: {
-    models: ["openrouter/auto"],
     apiKey: "OPENROUTER_API_KEY",
-    baseURL: "https://openrouter.ai/api/v1",
+    // baseURL: "https://openrouter.ai/api/v1",
   },
   [Provider.AzureOpenAI]: {
-    models: [],
     apiKey: "AZURE_OPENAI_API_KEY",
     baseURL:
       "https://{resourceName}.openai.azure.com/openai/deployments/{modelId}{path}",
   },
   [Provider.Google]: {
-    models: [
-      "gemini-1.5-flash",
-      "gemini-1.5-flash-latest",
-      "gemini-1.5-flash-001",
-      "gemini-1.5-flash-002",
-      "gemini-1.5-flash-8b",
-      "gemini-1.5-flash-8b-latest",
-      "gemini-1.5-flash-8b-001",
-      "gemini-1.5-pro",
-      "gemini-1.5-pro-latest",
-      "gemini-1.5-pro-001",
-      "gemini-1.5-pro-002",
-      "gemini-2.0-flash",
-      "gemini-2.0-flash-001",
-      "gemini-2.0-flash-live-001",
-      "gemini-2.0-flash-lite",
-      "gemini-2.0-pro-exp-02-05",
-      "gemini-2.0-flash-thinking-exp-01-21",
-      "gemini-2.0-flash-exp",
-      "gemini-2.5-pro-exp-03-25",
-      "gemini-2.5-pro-preview-05-06",
-      "gemini-2.5-flash-preview-04-17",
-      "gemini-exp-1206",
-      "gemma-3-27b-it",
-      "learnlm-1.5-pro-experimental",
-    ],
     apiKey: "GOOGLE_API_KEY",
     baseURL: "https://generativelanguage.googleapis.com/v1beta",
   },
   [Provider.SiliconFlow]: {
-    models: [
-      "Pro/deepseek-ai/DeepSeek-V3",
-      "Pro/deepseek-ai/DeepSeek-R1",
-      "deepseek-ai/DeepSeek-V3",
-      "deepseek-ai/DeepSeek-R1",
-      "Qwen/QVQ-72B-Preview",
-      "Qwen/QwQ-32B-Preview",
-      "Qwen/QwQ-32B",
-      "deepseek-ai/DeepSeek-R1-Distill-Qwen-32B",
-      "deepseek-ai/DeepSeek-R1-Distill-Qwen-14B",
-      "THUDM/GLM-4-32B-0414",
-      "THUDM/GLM-Z1-32B-0414",
-      "THUDM/GLM-Z1-9B-0414",
-      "THUDM/GLM-4-9B-0414",
-    ],
     apiKey: "SILICONFLOW_API_KEY",
     baseURL: "https://api.siliconflow.cn/v1",
   },
@@ -691,11 +570,18 @@ class AIService {
   // Save AI configuration
   async saveConfig(config: AIConfig): Promise<void> {
     try {
+      const provider = this.getProvider(config.provider);
+      if (!provider) throw new AIError(`Invalid provider: ${config.provider}`);
+
+      if (provider.requiresApiKey && !config.apiKey) {
+        throw new AIError(`API key is required for ${config.provider}`);
+      }
+
       this.config = config;
       await AsyncStorage.setItem("@ai_config", JSON.stringify(config));
     } catch (error) {
       console.error("Failed to save AI config:", error);
-      throw error;
+      throw new AIError(`Failed to save AI config`, error as Error);
     }
   }
 
@@ -706,103 +592,57 @@ class AIService {
       await AsyncStorage.removeItem("@ai_config");
     } catch (error) {
       console.error("Failed to clear AI config:", error);
-      throw error;
+      throw new AIError("Failed to clear AI config", error as Error);
     }
   }
 
   // Get AI provider instance based on current config
+  private providerFactories = {
+    [Provider.OpenAI]: (config: AIConfig) =>
+      createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL }),
+    [Provider.Anthropic]: (config: AIConfig) =>
+      createAnthropic({ apiKey: config.apiKey }),
+    [Provider.Google]: (config: AIConfig) =>
+      createGoogleGenerativeAI({ apiKey: config.apiKey }),
+    [Provider.Groq]: (config: AIConfig) =>
+      createGroq({ apiKey: config.apiKey }),
+    [Provider.DeepSeek]: (config: AIConfig) =>
+      createDeepSeek({ apiKey: config.apiKey }),
+    [Provider.Mistral]: (config: AIConfig) =>
+      createMistral({ apiKey: config.apiKey }),
+    [Provider.XAI]: (config: AIConfig) => createXai({ apiKey: config.apiKey }),
+    [Provider.OpenRouter]: (config: AIConfig) =>
+      createOpenRouter({ apiKey: config.apiKey }),
+    [Provider.AzureOpenAI]: (config: AIConfig) =>
+      createAzure({ apiKey: config.apiKey }),
+    [Provider.Zhipu]: (config: AIConfig) =>
+      createZhipu({ apiKey: config.apiKey }),
+    [Provider.SiliconFlow]: (config: AIConfig) =>
+      createOpenAI({
+        apiKey: config.apiKey,
+        baseURL: ProviderMap[config.provider as Provider.SiliconFlow]
+          .baseURL as string,
+      }),
+    [Provider.Cerebras]: (config: AIConfig) =>
+      createOpenAI({
+        baseURL: "https://api.cerebras.ai/v1",
+        apiKey: config.apiKey,
+      }),
+  };
+
   private getProviderInstance() {
-    if (!this.config) {
-      throw new Error("AI not configured");
-    }
-
-    const { provider, apiKey, baseURL, region, projectId } = this.config;
-
-    switch (provider) {
-      case Provider.OpenAI: {
-        return createOpenAI({
-          apiKey,
-          baseURL: baseURL,
-        });
-      }
-
-      case Provider.Anthropic: {
-        return createAnthropic({
-          apiKey,
-        });
-      }
-
-      case Provider.Google: {
-        return createGoogleGenerativeAI({
-          apiKey: apiKey,
-        });
-      }
-
-      case Provider.Groq: {
-        return createGroq({
-          apiKey,
-        });
-      }
-
-      case Provider.DeepSeek: {
-        return createDeepSeek({
-          apiKey: apiKey,
-        });
-      }
-
-      case Provider.Mistral: {
-        return createMistral({
-          apiKey,
-        });
-      }
-
-      case Provider.XAI: {
-        return createXai({
-          apiKey,
-        });
-      }
-
-      case Provider.OpenRouter: {
-        return createOpenRouter({
-          apiKey,
-        });
-      }
-
-      case Provider.AzureOpenAI: {
-        return createAzure({
-          apiKey,
-        });
-      }
-
-      case Provider.Zhipu: {
-        return createZhipu({
-          apiKey,
-        });
-      }
-
-      case Provider.SiliconFlow: {
-        return createOpenAI({
-          apiKey,
-          baseURL: ProviderMap[provider].baseURL,
-        });
-      }
-
-      case Provider.Cerebras: {
-        return createOpenAI({
-          baseURL: "https://api.cerebras.ai/v1",
-          apiKey,
-        });
-      }
-
-      default:
-        throw new Error(`Unsupported provider: ${provider}`);
-    }
+    if (!this.config) throw new AIError("AI not configured");
+    // @ts-ignore
+    const factory = this.providerFactories[this.config.provider];
+    if (!factory)
+      throw new AIError(`Unsupported provider: ${this.config.provider}`);
+    return factory(this.config);
   }
 
   // Generate text using current provider with MCP tools support
   async generateText(prompt: string, context?: string): Promise<string> {
     if (!this.config) {
-      throw new Error("AI service not configured");
+      throw new AIError("AI service not configured");
     }
 
     try {
@@ -838,18 +678,22 @@ class AIService {
       return result.text;
     } catch (error) {
       console.error("AI generation error:", error);
-      throw new Error(`AI generation failed: ${error}`);
+      throw new AIError(
+        // @ts-ignore
+        `AI generation failed: ${error.message}`,
+        error as Error,
+      );
     }
   }
 
-  // Stream AI responses for chat
-  async streamResponse(
+  private async prepareStreamConfig(
     message: string,
     context?: string,
     conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
-  ): Promise<ReadableStream<string>> {
+    emphasizeMCP: boolean = false,
+  ) {
     if (!this.isConfigured() || !this.config) {
-      throw new Error("AI service not configured");
+      throw new AIError("AI service not configured");
     }
 
     const messages: CoreMessage[] = [];
@@ -876,35 +720,41 @@ class AIService {
       content: message,
     });
 
-    try {
-      const provider = this.getProviderInstance();
-      const model = provider(this.config.model);
+    const mcpTools = await mcpService.getAvailableTools();
+    const hasMCPTools = Object.keys(mcpTools).length > 0;
 
-      // Get available MCP tools
-      const mcpTools = await mcpService.getAvailableTools();
-      const hasMCPTools = Object.keys(mcpTools).length > 0;
-
-      const streamConfig: any = {
-        model,
-        messages,
-        maxTokens: 1000,
-        temperature: 0.7,
-      };
-
-      // Add MCP tools if available
-      if (hasMCPTools) {
-        streamConfig.tools = mcpTools;
-        streamConfig.maxSteps = 5;
-        streamConfig.onStepFinish = async ({ toolCalls }: any) => {
-          if (toolCalls && toolCalls.length > 0) {
-            console.log(
-              "MCP tools used:",
-              toolCalls.map((tc: any) => tc.toolName),
-            );
+    return {
+      model: this.getProviderInstance()(this.config.model),
+      messages,
+      tools: hasMCPTools ? mcpTools : undefined,
+      maxSteps: hasMCPTools ? 5 : undefined,
+      maxTokens: 1000,
+      temperature: 0.7,
+      onStepFinish: hasMCPTools
+        ? async ({ toolCalls }: any) => {
+            if (toolCalls && toolCalls.length > 0) {
+              console.log(
+                "MCP tools used:",
+                toolCalls.map((tc: any) => tc.toolName),
+              );
+            }
           }
-        };
-      }
+        : undefined,
+    };
+  }
 
+  // Stream AI responses for chat
+  async streamResponse(
+    message: string,
+    context?: string,
+    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
+  ): Promise<ReadableStream<string>> {
+    try {
+      const streamConfig = await this.prepareStreamConfig(
+        message,
+        context,
+        conversationHistory,
+      );
       const result = await streamText(streamConfig);
 
       return new ReadableStream({
@@ -921,7 +771,8 @@ class AIService {
       });
     } catch (error) {
       console.error("Streaming error:", error);
-      throw new Error(`Streaming failed: ${error}`);
+      // @ts-ignore
+      throw new AIError(`Streaming failed: ${error.message}`, error as Error);
     }
   }
 
@@ -931,7 +782,6 @@ class AIService {
     context?: string,
     conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
   ): Promise<ReadableStream<string>> {
-    // This method is identical to streamResponse but with explicit MCP emphasis
     return this.streamResponse(message, context, conversationHistory);
   }
 
@@ -968,7 +818,7 @@ class AIService {
   // Stream text generation
   async *streamText(prompt: string, context?: string): AsyncIterable<string> {
     if (!this.config) {
-      throw new Error("AI service not configured");
+      throw new AIError("AI service not configured");
     }
 
     try {
@@ -1001,7 +851,11 @@ class AIService {
       }
     } catch (error) {
       console.error("AI streaming error:", error);
-      throw new Error(`AI streaming failed: ${error}`);
+      throw new AIError(
+        // @ts-ignore
+        `AI streaming failed: ${error.message}`,
+        error as Error,
+      );
     }
   }
 
@@ -1046,7 +900,7 @@ class AIService {
     url: string,
   ): Promise<WebPageSummary> {
     if (!this.isConfigured() || !this.config) {
-      throw new Error("AI service not configured");
+      throw new AIError("AI service not configured");
     }
 
     const prompt = `Summarize the following web page content from ${url}:
@@ -1079,7 +933,11 @@ Please provide:
       };
     } catch (error) {
       console.error("Summarization error:", error);
-      throw new Error(`Failed to summarize content: ${error}`);
+      throw new AIError(
+        // @ts-ignore
+        `Failed to summarize content: ${error.message}`,
+        error as Error,
+      );
     }
   }
 
@@ -1190,7 +1048,7 @@ Return JSON array of suggestions with title, url, and type.`;
     targetLanguage: string = "en",
   ): Promise<string> {
     if (!this.isConfigured() || !this.config) {
-      throw new Error("AI service not configured");
+      throw new AIError("AI service not configured");
     }
 
     const prompt = `Translate the following text to ${targetLanguage}:
@@ -1213,7 +1071,8 @@ Provide only the translation, no explanations.`;
       return result.text.trim();
     } catch (error) {
       console.error("Translation error:", error);
-      throw new Error(`Translation failed: ${error}`);
+      // @ts-ignore
+      throw new AIError(`Translation failed: ${error.message}`, error as Error);
     }
   }
 

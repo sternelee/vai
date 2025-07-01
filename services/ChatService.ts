@@ -1,6 +1,6 @@
-import type { ChatSessionInfo, Message } from '../types/chat';
-import { aiService } from './AIService';
-import DatabaseService from './DatabaseService';
+import type { ChatSessionInfo, Message } from "../types/chat";
+import { aiService } from "./AIService";
+import DatabaseService from "./DatabaseService";
 
 export class ChatService {
   private currentSessionId: string | null = null;
@@ -8,17 +8,23 @@ export class ChatService {
   // Create a new chat session
   async createSession(pageTitle: string, pageUrl?: string): Promise<string> {
     try {
-      const sessionId = await DatabaseService.createChatSession(pageTitle, pageUrl);
+      const sessionId = await DatabaseService.createChatSession(
+        pageTitle,
+        pageUrl,
+      );
       this.currentSessionId = sessionId;
       return sessionId;
     } catch (error) {
-      console.error('Failed to create chat session:', error);
+      console.error("Failed to create chat session:", error);
       throw error;
     }
   }
 
   // Get or create session for current page
-  async getOrCreateSession(pageTitle: string, pageUrl?: string): Promise<string> {
+  async getOrCreateSession(
+    pageTitle: string,
+    pageUrl?: string,
+  ): Promise<string> {
     if (!this.currentSessionId) {
       return this.createSession(pageTitle, pageUrl);
     }
@@ -30,7 +36,7 @@ export class ChatService {
     content: string,
     sessionId: string,
     context?: string,
-    conversationHistory: Message[] = []
+    conversationHistory: Message[] = [],
   ): Promise<{
     userMessage: Message;
     responseStream: ReadableStream<string>;
@@ -40,7 +46,7 @@ export class ChatService {
       // Create user message
       const userMessage: Message = {
         id: `user_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        role: 'user',
+        role: "user",
         content,
         createdAt: new Date(),
       };
@@ -49,16 +55,19 @@ export class ChatService {
       await DatabaseService.saveChatMessage(userMessage, sessionId);
 
       // Prepare conversation history for AI
-      const historyForAI = conversationHistory.map(msg => ({
+      const historyForAI = conversationHistory.map((msg) => ({
         role: msg.role as any,
-        content: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content),
+        content:
+          typeof msg.content === "string"
+            ? msg.content
+            : JSON.stringify(msg.content),
       }));
 
       // Get AI response stream
       const responseStream = await aiService.streamResponse(
         content,
         context,
-        historyForAI
+        historyForAI,
       );
 
       const assistantMessageId = `assistant_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
@@ -69,7 +78,7 @@ export class ChatService {
         assistantMessageId,
       };
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error("Failed to send message:", error);
       throw error;
     }
   }
@@ -79,12 +88,12 @@ export class ChatService {
     sessionId: string,
     messageId: string,
     content: string,
-    toolInvocations?: any[]
+    toolInvocations?: any[],
   ): Promise<void> {
     try {
       const assistantMessage: Message = {
         id: messageId,
-        role: 'assistant',
+        role: "assistant",
         content,
         toolInvocations,
         createdAt: new Date(),
@@ -92,7 +101,7 @@ export class ChatService {
 
       await DatabaseService.saveChatMessage(assistantMessage, sessionId);
     } catch (error) {
-      console.error('Failed to save assistant message:', error);
+      console.error("Failed to save assistant message:", error);
       throw error;
     }
   }
@@ -102,7 +111,7 @@ export class ChatService {
     try {
       return await DatabaseService.getChatMessages(sessionId, limit);
     } catch (error) {
-      console.error('Failed to get messages:', error);
+      console.error("Failed to get messages:", error);
       return [];
     }
   }
@@ -112,7 +121,7 @@ export class ChatService {
     try {
       return await DatabaseService.getChatSessions(limit);
     } catch (error) {
-      console.error('Failed to get sessions:', error);
+      console.error("Failed to get sessions:", error);
       return [];
     }
   }
@@ -122,7 +131,7 @@ export class ChatService {
     try {
       await DatabaseService.clearChatHistory(sessionId);
     } catch (error) {
-      console.error('Failed to clear chat history:', error);
+      console.error("Failed to clear chat history:", error);
       throw error;
     }
   }
@@ -135,7 +144,7 @@ export class ChatService {
         this.currentSessionId = null;
       }
     } catch (error) {
-      console.error('Failed to delete session:', error);
+      console.error("Failed to delete session:", error);
       throw error;
     }
   }
@@ -145,7 +154,7 @@ export class ChatService {
     try {
       await DatabaseService.updateChatSessionTitle(sessionId, title);
     } catch (error) {
-      console.error('Failed to update session title:', error);
+      console.error("Failed to update session title:", error);
       throw error;
     }
   }
@@ -154,31 +163,32 @@ export class ChatService {
   async generateSessionTitle(sessionId: string): Promise<string> {
     try {
       const messages = await this.getMessages(sessionId, 1);
-      if (messages.length === 0) return 'New Chat';
+      if (messages.length === 0) return "New Chat";
 
       const firstMessage = messages[0];
-      const content = typeof firstMessage.content === 'string' 
-        ? firstMessage.content 
-        : JSON.stringify(firstMessage.content);
+      const content =
+        typeof firstMessage.content === "string"
+          ? firstMessage.content
+          : JSON.stringify(firstMessage.content);
 
       // Generate a short title using AI
       if (aiService.isConfigured()) {
         try {
           const title = await aiService.generateText(
-            `Create a short title (3-5 words) for this chat based on the first message: "${content.substring(0, 200)}"`
+            `Create a short title (3-5 words) for this chat based on the first message: "${content.substring(0, 200)}"`,
           );
           return title.substring(0, 50).trim();
         } catch (error) {
-          console.warn('Failed to generate AI title:', error);
+          console.warn("Failed to generate AI title:", error);
         }
       }
 
       // Fallback: use first few words of the message
-      const words = content.split(' ').slice(0, 4).join(' ');
-      return words.length > 30 ? words.substring(0, 30) + '...' : words;
+      const words = content.split(" ").slice(0, 4).join(" ");
+      return words.length > 30 ? words.substring(0, 30) + "..." : words;
     } catch (error) {
-      console.error('Failed to generate session title:', error);
-      return 'New Chat';
+      console.error("Failed to generate session title:", error);
+      return "New Chat";
     }
   }
 
@@ -215,7 +225,7 @@ export class ChatService {
         mcpStats,
       };
     } catch (error) {
-      console.error('Failed to get chat stats:', error);
+      console.error("Failed to get chat stats:", error);
       return {
         totalSessions: 0,
         totalMessages: 0,
@@ -227,4 +237,5 @@ export class ChatService {
   }
 }
 
-export const chatService = new ChatService(); 
+export const chatService = new ChatService();
+

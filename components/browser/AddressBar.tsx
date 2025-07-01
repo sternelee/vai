@@ -10,7 +10,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 interface SearchSuggestion {
@@ -130,9 +130,9 @@ export default function AddressBar({
   };
 
   const getSecurityIcon = (url: string = "") => {
-    if (!url || url === 'about:blank' || url.startsWith('vai://')) return null;
+    if (!url || url === "about:blank" || url.startsWith("vai://")) return null;
 
-    if (url.startsWith('https://')) {
+    if (url.startsWith("https://")) {
       return (
         <Ionicons
           name="lock-closed"
@@ -140,7 +140,7 @@ export default function AddressBar({
           color={ArcTheme.colors.success}
         />
       );
-    } else if (url.startsWith('http://')) {
+    } else if (url.startsWith("http://")) {
       return (
         <Ionicons
           name="information-circle"
@@ -154,21 +154,26 @@ export default function AddressBar({
 
   const getSuggestionIcon = (type: string) => {
     switch (type) {
-      case 'search': return 'search';
-      case 'url': return 'globe';
-      case 'history': return 'time';
-      case 'bookmark': return 'bookmark';
-      default: return 'search';
+      case "search":
+        return "search";
+      case "url":
+        return "globe";
+      case "history":
+        return "time";
+      case "bookmark":
+        return "bookmark";
+      default:
+        return "search";
     }
   };
 
   const formatDisplayUrl = (url: string) => {
-    if (!url || url === 'about:blank') return '';
-    if (url.startsWith('vai://')) return 'VaiBrowser 主页';
+    if (!url || url === "about:blank") return "";
+    if (url.startsWith("vai://")) return "VaiBrowser 主页";
 
     try {
       const urlObj = new URL(url);
-      return urlObj.hostname + (urlObj.pathname !== '/' ? urlObj.pathname : '');
+      return urlObj.hostname + (urlObj.pathname !== "/" ? urlObj.pathname : "");
     } catch {
       return url;
     }
@@ -181,7 +186,7 @@ export default function AddressBar({
         {
           backgroundColor: themeColors.card,
           borderBottomColor: themeColors.divider,
-        }
+        },
       ]}
       onPress={() => handleSuggestionPress(item)}
       activeOpacity={0.7}
@@ -195,19 +200,13 @@ export default function AddressBar({
       </View>
       <View style={styles.suggestionContent}>
         <Text
-          style={[
-            styles.suggestionText,
-            { color: themeColors.text.primary },
-          ]}
+          style={[styles.suggestionText, { color: themeColors.text.primary }]}
           numberOfLines={1}
         >
           {item.query}
         </Text>
         <Text
-          style={[
-            styles.suggestionType,
-            { color: themeColors.text.tertiary },
-          ]}
+          style={[styles.suggestionType, { color: themeColors.text.tertiary }]}
         >
           {item.type}
         </Text>
@@ -231,7 +230,7 @@ export default function AddressBar({
             backgroundColor: themeColors.surface,
             borderBottomColor: themeColors.border,
             ...(isIncognito && {
-              backgroundColor: isDark ? '#1A1A1A' : '#F0F0F0',
+              backgroundColor: isDark ? "#1A1A1A" : "#F0F0F0",
               borderBottomColor: ArcTheme.colors.accent,
               borderBottomWidth: 2,
             }),
@@ -244,9 +243,11 @@ export default function AddressBar({
             style={[
               styles.navButton,
               {
-                backgroundColor: canGoBack ? themeColors.interactive.hover : 'transparent',
+                backgroundColor: canGoBack
+                  ? themeColors.interactive.hover
+                  : "transparent",
                 opacity: canGoBack ? 1 : 0.4,
-              }
+              },
             ]}
             onPress={onGoBack}
             disabled={!canGoBack}
@@ -263,9 +264,11 @@ export default function AddressBar({
             style={[
               styles.navButton,
               {
-                backgroundColor: canGoForward ? themeColors.interactive.hover : 'transparent',
+                backgroundColor: canGoForward
+                  ? themeColors.interactive.hover
+                  : "transparent",
                 opacity: canGoForward ? 1 : 0.4,
-              }
+              },
             ]}
             onPress={onGoForward}
             disabled={!canGoForward}
@@ -285,10 +288,14 @@ export default function AddressBar({
             styles.inputContainer,
             {
               backgroundColor: themeColors.background,
-              borderColor: isFocused ? ArcTheme.colors.primary : themeColors.border,
+              borderColor: isFocused
+                ? ArcTheme.colors.primary
+                : themeColors.border,
               ...(isIncognito && {
-                backgroundColor: isDark ? '#2A2A2A' : '#E8E8E8',
-                borderColor: isFocused ? ArcTheme.colors.accent : ArcTheme.colors.accent + '40',
+                backgroundColor: isDark ? "#2A2A2A" : "#E8E8E8",
+                borderColor: isFocused
+                  ? ArcTheme.colors.accent
+                  : ArcTheme.colors.accent + "40",
               }),
             },
           ]}
@@ -313,9 +320,7 @@ export default function AddressBar({
             onFocus={handleFocus}
             onBlur={handleBlur}
             onSubmitEditing={handleSubmit}
-            placeholder={
-              isIncognito ? "私密浏览..." : "搜索或输入网址"
-            }
+            placeholder={isIncognito ? "私密浏览..." : "搜索或输入网址"}
             placeholderTextColor={
               isIncognito ? ArcTheme.colors.accent : themeColors.text.tertiary
             }
@@ -339,7 +344,9 @@ export default function AddressBar({
                   name={isBookmarked ? "bookmark" : "bookmark-outline"}
                   size={18}
                   color={
-                    isBookmarked ? ArcTheme.colors.warning : themeColors.text.secondary
+                    isBookmarked
+                      ? ArcTheme.colors.warning
+                      : themeColors.text.secondary
                   }
                 />
               </TouchableOpacity>
@@ -352,9 +359,9 @@ export default function AddressBar({
                   styles.inputActionButton,
                   styles.quickAIButton,
                   {
-                    backgroundColor: ArcTheme.colors.primary + '15',
-                    borderColor: ArcTheme.colors.primary + '25',
-                  }
+                    backgroundColor: ArcTheme.colors.primary + "15",
+                    borderColor: ArcTheme.colors.primary + "25",
+                  },
                 ]}
                 onPress={onQuickAIChat}
                 activeOpacity={0.7}
@@ -376,13 +383,21 @@ export default function AddressBar({
               {isLoading ? (
                 <ActivityIndicator
                   size="small"
-                  color={isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary}
+                  color={
+                    isIncognito
+                      ? ArcTheme.colors.accent
+                      : ArcTheme.colors.primary
+                  }
                 />
               ) : (
                 <Ionicons
                   name="refresh"
                   size={18}
-                  color={isIncognito ? ArcTheme.colors.accent : themeColors.text.secondary}
+                  color={
+                    isIncognito
+                      ? ArcTheme.colors.accent
+                      : themeColors.text.secondary
+                  }
                 />
               )}
             </TouchableOpacity>
@@ -398,7 +413,7 @@ export default function AddressBar({
                 styles.actionButton,
                 {
                   backgroundColor: themeColors.interactive.hover,
-                }
+                },
               ]}
               onPress={onShowToolsMenu}
               activeOpacity={0.7}
@@ -420,7 +435,7 @@ export default function AddressBar({
                   backgroundColor: themeColors.interactive.hover,
                   borderColor: themeColors.border,
                   ...(isIncognito && {
-                    backgroundColor: ArcTheme.colors.accent + '20',
+                    backgroundColor: ArcTheme.colors.accent + "20",
                     borderColor: ArcTheme.colors.accent,
                     borderWidth: 1,
                   }),
@@ -450,11 +465,11 @@ export default function AddressBar({
               styles.aiButton,
               {
                 backgroundColor: aiEnabled
-                  ? (isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary)
-                  : 'transparent',
-                borderColor: aiEnabled
-                  ? 'transparent'
-                  : themeColors.border,
+                  ? isIncognito
+                    ? ArcTheme.colors.accent
+                    : ArcTheme.colors.primary
+                  : "transparent",
+                borderColor: aiEnabled ? "transparent" : themeColors.border,
                 borderWidth: aiEnabled ? 0 : 1,
               },
             ]}
@@ -464,11 +479,7 @@ export default function AddressBar({
             <Ionicons
               name="sparkles"
               size={18}
-              color={
-                aiEnabled
-                  ? "#FFFFFF"
-                  : themeColors.text.secondary
-              }
+              color={aiEnabled ? "#FFFFFF" : themeColors.text.secondary}
             />
           </TouchableOpacity>
         </View>
@@ -481,7 +492,7 @@ export default function AddressBar({
             styles.progressContainer,
             {
               backgroundColor: themeColors.divider,
-            }
+            },
           ]}
         >
           <View
@@ -489,7 +500,9 @@ export default function AddressBar({
               styles.progressBar,
               {
                 width: `${progress * 100}%`,
-                backgroundColor: isIncognito ? ArcTheme.colors.accent : ArcTheme.colors.primary,
+                backgroundColor: isIncognito
+                  ? ArcTheme.colors.accent
+                  : ArcTheme.colors.primary,
               },
             ]}
           />
@@ -553,7 +566,8 @@ const styles = StyleSheet.create({
     borderRadius: ArcTheme.borderRadius.base,
     borderWidth: 1,
     paddingHorizontal: ArcTheme.spacing.sm,
-    paddingVertical: Platform.OS === 'ios' ? ArcTheme.spacing.sm : ArcTheme.spacing.xs,
+    paddingVertical:
+      Platform.OS === "ios" ? ArcTheme.spacing.sm : ArcTheme.spacing.xs,
     marginHorizontal: ArcTheme.spacing.xs,
   } as const,
   securityIcon: {
@@ -564,13 +578,13 @@ const styles = StyleSheet.create({
   textInput: {
     flex: 1,
     fontSize: ArcTheme.typography.fontSize.base,
-    fontWeight: '400' as const,
+    fontWeight: "400" as const,
     marginLeft: ArcTheme.spacing.xs,
     paddingVertical: ArcTheme.spacing.xs / 2,
   } as const,
   inputActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     gap: ArcTheme.spacing.xs,
   } as const,
   inputActionButton: {
@@ -603,7 +617,7 @@ const styles = StyleSheet.create({
   } as const,
   tabCount: {
     fontSize: ArcTheme.typography.fontSize.sm,
-    fontWeight: '600' as const,
+    fontWeight: "600" as const,
   } as const,
   aiButton: {
     width: 36,
@@ -629,7 +643,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginHorizontal: ArcTheme.spacing.base,
     marginTop: ArcTheme.spacing.xs / 2,
-    overflow: 'hidden',
+    overflow: "hidden",
   } as const,
   suggestionsList: {
     maxHeight: 300,
@@ -651,7 +665,7 @@ const styles = StyleSheet.create({
   } as const,
   suggestionText: {
     fontSize: ArcTheme.typography.fontSize.base,
-    fontWeight: '400' as const,
+    fontWeight: "400" as const,
   } as const,
   suggestionType: {
     fontSize: ArcTheme.typography.fontSize.xs,
@@ -659,4 +673,3 @@ const styles = StyleSheet.create({
     textTransform: "capitalize",
   } as const,
 });
-

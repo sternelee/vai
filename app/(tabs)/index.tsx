@@ -1,36 +1,45 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useRef, useState } from 'react';
-import { Alert, SafeAreaView, Share, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Modal from 'react-native-modal';
-import { WebView } from 'react-native-webview';
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useEffect, useRef, useState } from "react";
+import {
+  Alert,
+  SafeAreaView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import Modal from "react-native-modal";
+import { WebView } from "react-native-webview";
 
 // Components
-import AddressBar from '@/components/browser/AddressBar';
-import AIChatPanel from '@/components/browser/AIChatPanel';
-import BookmarkManager from '@/components/browser/BookmarkManager';
-import BottomNavigationBar from '@/components/browser/BottomNavigationBar';
-import BrowserWebView from '@/components/browser/BrowserWebView';
-import DownloadManager from '@/components/browser/DownloadManager';
-import HistoryManager from '@/components/browser/HistoryManager';
-import HomePage from '@/components/browser/HomePage';
-import ResourceSniffer from '@/components/browser/ResourceSniffer';
-import TabBar from '@/components/browser/TabBar';
-import TabManager from '@/components/browser/TabManager';
-import ToolsMenu from '@/components/browser/ToolsMenu';
-import UserScriptManager from '@/components/browser/UserScriptManager';
+import AddressBar from "@/components/browser/AddressBar";
+import AIChatPanel from "@/components/browser/AIChatPanel";
+import BookmarkManager from "@/components/browser/BookmarkManager";
+import BottomNavigationBar from "@/components/browser/BottomNavigationBar";
+import BrowserWebView from "@/components/browser/BrowserWebView";
+import DownloadManager from "@/components/browser/DownloadManager";
+import HistoryManager from "@/components/browser/HistoryManager";
+import HomePage from "@/components/browser/HomePage";
+import ResourceSniffer from "@/components/browser/ResourceSniffer";
+import TabBar from "@/components/browser/TabBar";
+import TabManager from "@/components/browser/TabManager";
+import ToolsMenu from "@/components/browser/ToolsMenu";
+import UserScriptManager from "@/components/browser/UserScriptManager";
 
 // Services
-import { aiService } from '@/services/AIService';
-import databaseService from '@/services/DatabaseService';
-import { downloadService } from '@/services/DownloadService';
-import { homePageService } from '@/services/HomePageService';
-import { mcpService } from '@/services/MCPService';
-import { performanceService } from '@/services/PerformanceService';
-import { resourceSnifferService } from '@/services/ResourceSnifferService';
-import { userScriptService } from '@/services/UserScriptService';
+import { aiService } from "@/services/AIService";
+import databaseService from "@/services/DatabaseService";
+import { downloadService } from "@/services/DownloadService";
+import { homePageService } from "@/services/HomePageService";
+import { mcpService } from "@/services/MCPService";
+import { performanceService } from "@/services/PerformanceService";
+import { resourceSnifferService } from "@/services/ResourceSnifferService";
+import { userScriptService } from "@/services/UserScriptService";
 
 // Hooks
-import { useColorScheme } from '@/hooks/useColorScheme';
+import { useColorScheme } from "@/hooks/useColorScheme";
 
 // Types
 interface Tab {
@@ -49,7 +58,7 @@ interface Tab {
 
 interface ChatMessage {
   id: string;
-  role: 'user' | 'assistant';
+  role: "user" | "assistant";
   content: string;
   timestamp: number;
   isStreaming?: boolean;
@@ -57,7 +66,7 @@ interface ChatMessage {
 
 interface SearchSuggestion {
   query: string;
-  type: 'search' | 'url' | 'history' | 'bookmark';
+  type: "search" | "url" | "history" | "bookmark";
   confidence: number;
 }
 
@@ -65,7 +74,13 @@ interface DownloadItem {
   id: string;
   url: string;
   filename: string;
-  status: 'pending' | 'downloading' | 'completed' | 'paused' | 'error' | 'cancelled';
+  status:
+    | "pending"
+    | "downloading"
+    | "completed"
+    | "paused"
+    | "error"
+    | "cancelled";
   progress: number;
   totalSize?: number;
   downloadedSize: number;
@@ -77,7 +92,7 @@ interface DownloadItem {
 interface ResourceItem {
   id: string;
   url: string;
-  type: 'image' | 'video' | 'audio' | 'document' | 'script' | 'style' | 'other';
+  type: "image" | "video" | "audio" | "document" | "script" | "style" | "other";
   name: string;
   size?: string;
   extension?: string;
@@ -93,23 +108,27 @@ interface HomePageShortcut {
 
 export default function BrowserScreen() {
   const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark';
+  const isDark = colorScheme === "dark";
 
   // Add WebView ref
   const webViewRef = useRef<WebView>(null);
 
   // State
-  const [activeTabId, setActiveTabId] = useState<string>('');
+  const [activeTabId, setActiveTabId] = useState<string>("");
   const [tabs, setTabs] = useState<Tab[]>([]);
-  const [navigationCommand, setNavigationCommand] = useState<'reload' | 'back' | 'forward' | null>(null);
-  const [searchSuggestions, setSearchSuggestions] = useState<SearchSuggestion[]>([]);
+  const [navigationCommand, setNavigationCommand] = useState<
+    "reload" | "back" | "forward" | null
+  >(null);
+  const [searchSuggestions, setSearchSuggestions] = useState<
+    SearchSuggestion[]
+  >([]);
   const [aiChatVisible, setAiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
   const [aiConfigured, setAiConfigured] = useState(false);
   const [performanceStats, setPerformanceStats] = useState<any>(null);
-  const [selectedText, setSelectedText] = useState<string>('');
-  const [currentPageContent, setCurrentPageContent] = useState<string>('');
+  const [selectedText, setSelectedText] = useState<string>("");
+  const [currentPageContent, setCurrentPageContent] = useState<string>("");
   const [history, setHistory] = useState<any[]>([]);
   const [bookmarks, setBookmarks] = useState<any[]>([]);
   const [bookmarked, setBookmarked] = useState(false);
@@ -136,11 +155,13 @@ export default function BrowserScreen() {
   const [pageResources, setPageResources] = useState<ResourceItem[]>([]);
 
   // Homepage states
-  const [homePageShortcuts, setHomePageShortcuts] = useState<HomePageShortcut[]>([]);
-  const [homePageUrl, setHomePageUrl] = useState<string>('vai://home');
+  const [homePageShortcuts, setHomePageShortcuts] = useState<
+    HomePageShortcut[]
+  >([]);
+  const [homePageUrl, setHomePageUrl] = useState<string>("vai://home");
 
   // Get current active tab
-  const currentTab = tabs.find(tab => tab.id === activeTabId);
+  const currentTab = tabs.find((tab) => tab.id === activeTabId);
 
   useEffect(() => {
     const loadData = async () => {
@@ -159,7 +180,7 @@ export default function BrowserScreen() {
         setAiConfigured(aiStatus.configured && aiStatus.ready);
 
         // Create initial tab if none exist
-        const savedTabs = await AsyncStorage.getItem('browser_tabs');
+        const savedTabs = await AsyncStorage.getItem("browser_tabs");
         if (savedTabs) {
           const parsedTabs = JSON.parse(savedTabs);
           if (parsedTabs.length > 0) {
@@ -173,9 +194,8 @@ export default function BrowserScreen() {
         const newTab = createNewTab();
         setTabs([newTab]);
         setActiveTabId(newTab.id);
-
       } catch (error) {
-        console.error('Failed to load browser data:', error);
+        console.error("Failed to load browser data:", error);
 
         // Create fallback tab
         const fallbackTab = createNewTab();
@@ -197,9 +217,9 @@ export default function BrowserScreen() {
       // Performance monitoring
       performanceService.startMonitoring();
 
-      console.log('Services initialized successfully');
+      console.log("Services initialized successfully");
     } catch (error) {
-      console.error('Failed to initialize services:', error);
+      console.error("Failed to initialize services:", error);
     }
   };
 
@@ -216,9 +236,8 @@ export default function BrowserScreen() {
       // Load bookmarks
       const bookmarkData = await databaseService.getBookmarks();
       setBookmarks(bookmarkData);
-
     } catch (error) {
-      console.error('Failed to load browsing data:', error);
+      console.error("Failed to load browsing data:", error);
     }
   };
 
@@ -229,7 +248,7 @@ export default function BrowserScreen() {
       setHomePageShortcuts(shortcuts);
       setHomePageUrl(homeUrl);
     } catch (error) {
-      console.error('Failed to load homepage settings:', error);
+      console.error("Failed to load homepage settings:", error);
     }
   };
 
@@ -239,15 +258,15 @@ export default function BrowserScreen() {
       const isBookmarked = bookmarks.some((b: any) => b.url === url);
       setBookmarked(isBookmarked);
     } catch (error) {
-      console.error('Failed to check if bookmarked:', error);
+      console.error("Failed to check if bookmarked:", error);
     }
   };
 
   const saveToHistory = async (url: string, title: string) => {
-    if (!url || url === 'about:blank') return;
+    if (!url || url === "about:blank") return;
 
     // Skip for incognito tabs
-    const currentTab = tabs.find(tab => tab.id === activeTabId);
+    const currentTab = tabs.find((tab) => tab.id === activeTabId);
     if (currentTab?.isIncognito) return;
 
     try {
@@ -255,14 +274,14 @@ export default function BrowserScreen() {
         url,
         title,
         visitedAt: new Date().toISOString(),
-        favicon: currentTab?.favicon || '',
+        favicon: currentTab?.favicon || "",
       });
 
       // Update history state
       const historyData = await databaseService.getHistory(50);
       setHistory(historyData);
     } catch (error) {
-      console.error('Failed to save to history:', error);
+      console.error("Failed to save to history:", error);
     }
   };
 
@@ -275,7 +294,7 @@ export default function BrowserScreen() {
     return {
       id,
       url: tabUrl,
-      title: isHomePage ? 'VaiBrowser 主页' : '新标签页',
+      title: isHomePage ? "VaiBrowser 主页" : "新标签页",
       isLoading: false,
       canGoBack: false,
       canGoForward: false,
@@ -288,9 +307,9 @@ export default function BrowserScreen() {
   const handleNewTab = (isIncognito: boolean = false) => {
     const newTab = createNewTab(undefined, isIncognito);
 
-    setTabs(prevTabs => [
-      ...prevTabs.map(tab => ({ ...tab, isActive: false })),
-      { ...newTab, isActive: true }
+    setTabs((prevTabs) => [
+      ...prevTabs.map((tab) => ({ ...tab, isActive: false })),
+      { ...newTab, isActive: true },
     ]);
 
     setActiveTabId(newTab.id);
@@ -298,11 +317,11 @@ export default function BrowserScreen() {
   };
 
   const handleTabSelect = (tabId: string) => {
-    setTabs(prevTabs =>
-      prevTabs.map(tab => ({
+    setTabs((prevTabs) =>
+      prevTabs.map((tab) => ({
         ...tab,
-        isActive: tab.id === tabId
-      }))
+        isActive: tab.id === tabId,
+      })),
     );
     setActiveTabId(tabId);
     setTabManagerVisible(false);
@@ -315,11 +334,11 @@ export default function BrowserScreen() {
       return;
     }
 
-    const tabIndex = tabs.findIndex(tab => tab.id === tabId);
+    const tabIndex = tabs.findIndex((tab) => tab.id === tabId);
     const isActiveTab = tabId === activeTabId;
 
-    setTabs(prevTabs => {
-      const newTabs = prevTabs.filter(tab => tab.id !== tabId);
+    setTabs((prevTabs) => {
+      const newTabs = prevTabs.filter((tab) => tab.id !== tabId);
 
       // If we closed the active tab, select another one
       if (isActiveTab && newTabs.length > 0) {
@@ -341,10 +360,8 @@ export default function BrowserScreen() {
   };
 
   const updateTab = (tabId: string, updates: Partial<Tab>) => {
-    setTabs(prevTabs =>
-      prevTabs.map(tab =>
-        tab.id === tabId ? { ...tab, ...updates } : tab
-      )
+    setTabs((prevTabs) =>
+      prevTabs.map((tab) => (tab.id === tabId ? { ...tab, ...updates } : tab)),
     );
   };
 
@@ -356,7 +373,7 @@ export default function BrowserScreen() {
     updateTab(currentTab.id, {
       url,
       isLoading: true,
-      progress: 0
+      progress: 0,
     });
 
     // Save to history (unless incognito)
@@ -366,11 +383,11 @@ export default function BrowserScreen() {
   };
 
   const formatUrl = (input: string): string => {
-    if (input.includes('://')) {
+    if (input.includes("://")) {
       return input;
     }
 
-    if (input.includes('.') && !input.includes(' ')) {
+    if (input.includes(".") && !input.includes(" ")) {
       return `https://${input}`;
     }
 
@@ -392,10 +409,10 @@ export default function BrowserScreen() {
           suggestions = await aiService.generateSearchSuggestions(
             query,
             history,
-            bookmarks
+            bookmarks,
           );
         } catch (error) {
-          console.log('AI suggestions failed, using fallback');
+          console.log("AI suggestions failed, using fallback");
         }
       }
 
@@ -406,7 +423,7 @@ export default function BrowserScreen() {
 
       setSearchSuggestions(suggestions);
     } catch (error) {
-      console.error('Failed to get suggestions:', error);
+      console.error("Failed to get suggestions:", error);
       setSearchSuggestions(generateFallbackSuggestions(query));
     }
   };
@@ -415,10 +432,10 @@ export default function BrowserScreen() {
     const suggestions: SearchSuggestion[] = [];
 
     // Check if input looks like a URL
-    if (query.includes('.') && !query.includes(' ')) {
+    if (query.includes(".") && !query.includes(" ")) {
       suggestions.push({
-        query: query.includes('://') ? query : `https://${query}`,
-        type: 'url',
+        query: query.includes("://") ? query : `https://${query}`,
+        type: "url",
         confidence: 0.9,
       });
     }
@@ -426,13 +443,13 @@ export default function BrowserScreen() {
     // Search in history (only for non-incognito tabs)
     if (!currentTab?.isIncognito) {
       const historyMatches = history
-        .filter(url => url.toLowerCase().includes(query.toLowerCase()))
+        .filter((url) => url.toLowerCase().includes(query.toLowerCase()))
         .slice(0, 3);
 
-      historyMatches.forEach(url => {
+      historyMatches.forEach((url) => {
         suggestions.push({
           query: url,
-          type: 'history',
+          type: "history",
           confidence: 0.7,
         });
       });
@@ -440,13 +457,13 @@ export default function BrowserScreen() {
 
     // Search in bookmarks
     const bookmarkMatches = bookmarks
-      .filter(url => url.toLowerCase().includes(query.toLowerCase()))
+      .filter((url) => url.toLowerCase().includes(query.toLowerCase()))
       .slice(0, 2);
 
-    bookmarkMatches.forEach(url => {
+    bookmarkMatches.forEach((url) => {
       suggestions.push({
         query: url,
-        type: 'bookmark',
+        type: "bookmark",
         confidence: 0.8,
       });
     });
@@ -455,7 +472,7 @@ export default function BrowserScreen() {
     if (query.length > 2) {
       suggestions.push({
         query: `Search for "${query}"`,
-        type: 'search',
+        type: "search",
         confidence: 0.6,
       });
     }
@@ -464,18 +481,18 @@ export default function BrowserScreen() {
   };
 
   const handleRefresh = () => {
-    setNavigationCommand('reload');
+    setNavigationCommand("reload");
   };
 
   const handleGoBack = () => {
     if (currentTab?.canGoBack) {
-      setNavigationCommand('back');
+      setNavigationCommand("back");
     }
   };
 
   const handleGoForward = () => {
     if (currentTab?.canGoForward) {
-      setNavigationCommand('forward');
+      setNavigationCommand("forward");
     }
   };
 
@@ -489,7 +506,7 @@ export default function BrowserScreen() {
       canGoBack: navState.canGoBack,
       canGoForward: navState.canGoForward,
       url: navState.url,
-      title: navState.title || 'Loading...',
+      title: navState.title || "Loading...",
     });
   };
 
@@ -510,49 +527,49 @@ export default function BrowserScreen() {
     });
 
     // Save to history (unless incognito)
-    const tab = tabs.find(t => t.id === tabId);
-    if (url !== 'https://www.google.com' && !tab?.isIncognito) {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (url !== "https://www.google.com" && !tab?.isIncognito) {
       saveToHistory(url, title);
     }
   };
 
   const handleError = (tabId: string, error: any) => {
-    console.error('WebView error:', error);
+    console.error("WebView error:", error);
     updateTab(tabId, { isLoading: false, progress: 0 });
 
     Alert.alert(
-      'Page Load Error',
-      'Failed to load the page. Please check your internet connection and try again.',
+      "Page Load Error",
+      "Failed to load the page. Please check your internet connection and try again.",
       [
-        { text: 'OK', style: 'default' },
-        { text: 'Retry', onPress: handleRefresh },
-      ]
+        { text: "OK", style: "default" },
+        { text: "Retry", onPress: handleRefresh },
+      ],
     );
   };
 
   const handleMessage = (tabId: string, message: any) => {
-    console.log('WebView message:', message);
+    console.log("WebView message:", message);
 
     switch (message.type) {
-      case 'ai_button_clicked':
+      case "ai_button_clicked":
         setCurrentPageContent(message.pageContent);
         setAiChatVisible(true);
         break;
 
-      case 'text_selected':
+      case "text_selected":
         setSelectedText(message.selectedText);
         break;
 
-      case 'page_content_extracted':
+      case "page_content_extracted":
         setCurrentPageContent(message.content.text);
         break;
 
-      case 'download_requested':
+      case "download_requested":
         handleDownloadRequest(message.url, message.filename);
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        console.log("Unknown message type:", message.type);
     }
   };
 
@@ -562,42 +579,48 @@ export default function BrowserScreen() {
       // Check if URL is downloadable
       if (!downloadService.isDownloadableUrl(url)) {
         Alert.alert(
-          'Download Not Supported',
-          'This file type is not supported for download.',
-          [{ text: 'OK' }]
+          "Download Not Supported",
+          "This file type is not supported for download.",
+          [{ text: "OK" }],
         );
         return;
       }
 
       Alert.alert(
-        'Download File',
-        `Do you want to download ${filename || 'this file'}?`,
+        "Download File",
+        `Do you want to download ${filename || "this file"}?`,
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: "Cancel", style: "cancel" },
           {
-            text: 'Download',
+            text: "Download",
             onPress: async () => {
               try {
                 await downloadService.startDownload({ url, filename });
                 Alert.alert(
-                  'Download Started',
-                  'File download has started. You can view progress in the Downloads manager.',
+                  "Download Started",
+                  "File download has started. You can view progress in the Downloads manager.",
                   [
-                    { text: 'OK' },
-                    { text: 'View Downloads', onPress: () => setDownloadManagerVisible(true) },
-                  ]
+                    { text: "OK" },
+                    {
+                      text: "View Downloads",
+                      onPress: () => setDownloadManagerVisible(true),
+                    },
+                  ],
                 );
               } catch (error) {
-                console.error('Download failed:', error);
-                Alert.alert('Download Failed', 'Failed to start download. Please try again.');
+                console.error("Download failed:", error);
+                Alert.alert(
+                  "Download Failed",
+                  "Failed to start download. Please try again.",
+                );
               }
             },
           },
-        ]
+        ],
       );
     } catch (error) {
-      console.error('Download request failed:', error);
-      Alert.alert('Error', 'Failed to process download request.');
+      console.error("Download request failed:", error);
+      Alert.alert("Error", "Failed to process download request.");
     }
   };
 
@@ -605,7 +628,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.pauseDownload(id);
     } catch (error) {
-      console.error('Failed to pause download:', error);
+      console.error("Failed to pause download:", error);
     }
   };
 
@@ -613,7 +636,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.resumeDownload(id);
     } catch (error) {
-      console.error('Failed to resume download:', error);
+      console.error("Failed to resume download:", error);
     }
   };
 
@@ -621,7 +644,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.cancelDownload(id);
     } catch (error) {
-      console.error('Failed to cancel download:', error);
+      console.error("Failed to cancel download:", error);
     }
   };
 
@@ -629,7 +652,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.retryDownload(id);
     } catch (error) {
-      console.error('Failed to retry download:', error);
+      console.error("Failed to retry download:", error);
     }
   };
 
@@ -637,7 +660,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.clearCompleted();
     } catch (error) {
-      console.error('Failed to clear completed downloads:', error);
+      console.error("Failed to clear completed downloads:", error);
     }
   };
 
@@ -645,7 +668,7 @@ export default function BrowserScreen() {
     try {
       await downloadService.clearAll();
     } catch (error) {
-      console.error('Failed to clear all downloads:', error);
+      console.error("Failed to clear all downloads:", error);
     }
   };
 
@@ -660,10 +683,10 @@ export default function BrowserScreen() {
 
     // 设置页面上下文
     setAIContext({
-      type: 'quick_chat',
+      type: "quick_chat",
       title: currentTab.title,
       url: currentTab.url,
-      content: currentPageContent || ''
+      content: currentPageContent || "",
     });
 
     // 打开AI Chat面板
@@ -673,50 +696,53 @@ export default function BrowserScreen() {
     if (!currentPageContent) {
       // 通过WebView注入的脚本自动获取页面内容
       // 这将触发 'page_content_extracted' 消息
-      console.log('Requesting page content extraction for AI chat');
+      console.log("Requesting page content extraction for AI chat");
     }
   };
 
-  const handleSendAIMessage = async (message: string, context: string): Promise<ReadableStream<string>> => {
+  const handleSendAIMessage = async (
+    message: string,
+    context: string,
+  ): Promise<ReadableStream<string>> => {
     // Add user message
     const userMessage: ChatMessage = {
       id: Date.now().toString(),
-      role: 'user',
+      role: "user",
       content: message,
       timestamp: Date.now(),
     };
-    setAiMessages(prev => [...prev, userMessage]);
+    setAiMessages((prev) => [...prev, userMessage]);
 
     try {
       if (!aiConfigured) {
-        throw new Error('AI not configured');
+        throw new Error("AI not configured");
       }
 
       // Get AI response using the real AI service
       const responseStream = await aiService.streamResponse(
         message,
         context,
-        aiMessages.map(msg => ({
+        aiMessages.map((msg) => ({
           role: msg.role,
-          content: msg.content
-        }))
+          content: msg.content,
+        })),
       );
 
       // Create assistant message placeholder
       const assistantMessageId = (Date.now() + 1).toString();
       const assistantMessage: ChatMessage = {
         id: assistantMessageId,
-        role: 'assistant',
-        content: '',
+        role: "assistant",
+        content: "",
         timestamp: Date.now(),
         isStreaming: true,
       };
 
-      setAiMessages(prev => [...prev, assistantMessage]);
+      setAiMessages((prev) => [...prev, assistantMessage]);
 
       // Handle the streaming response
       const reader = responseStream.getReader();
-      let accumulatedContent = '';
+      let accumulatedContent = "";
 
       try {
         while (true) {
@@ -726,44 +752,43 @@ export default function BrowserScreen() {
           accumulatedContent += value;
 
           // Update the streaming message
-          setAiMessages(prev =>
-            prev.map(msg =>
+          setAiMessages((prev) =>
+            prev.map((msg) =>
               msg.id === assistantMessageId
                 ? { ...msg, content: accumulatedContent }
-                : msg
-            )
+                : msg,
+            ),
           );
         }
 
         // Mark as complete
-        setAiMessages(prev =>
-          prev.map(msg =>
+        setAiMessages((prev) =>
+          prev.map((msg) =>
             msg.id === assistantMessageId
               ? { ...msg, isStreaming: false }
-              : msg
-          )
+              : msg,
+          ),
         );
-
       } finally {
         reader.releaseLock();
       }
 
       return responseStream;
-
     } catch (error) {
-      console.error('AI chat error:', error);
+      console.error("AI chat error:", error);
 
       // Remove user message and add error message
-      setAiMessages(prev => prev.slice(0, -1));
+      setAiMessages((prev) => prev.slice(0, -1));
 
       const errorMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.',
+        role: "assistant",
+        content:
+          "Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.",
         timestamp: Date.now(),
       };
 
-      setAiMessages(prev => [...prev, errorMessage]);
+      setAiMessages((prev) => [...prev, errorMessage]);
 
       throw error;
     }
@@ -775,17 +800,18 @@ export default function BrowserScreen() {
 
   const handleConfigureAI = () => {
     Alert.alert(
-      'Configure AI',
-      'To use AI features, you need to configure an AI provider and API key in the Settings.',
+      "Configure AI",
+      "To use AI features, you need to configure an AI provider and API key in the Settings.",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Go to Settings', onPress: () => {
+          text: "Go to Settings",
+          onPress: () => {
             // Navigate to settings tab - this should be implemented with proper navigation
-            console.log('Navigate to settings tab');
-          }
+            console.log("Navigate to settings tab");
+          },
         },
-      ]
+      ],
     );
   };
 
@@ -796,9 +822,9 @@ export default function BrowserScreen() {
     // Don't allow bookmarking in incognito mode
     if (currentTab.isIncognito) {
       Alert.alert(
-        'Incognito Mode',
-        'Bookmarks are not available in incognito mode.',
-        [{ text: 'OK' }]
+        "Incognito Mode",
+        "Bookmarks are not available in incognito mode.",
+        [{ text: "OK" }],
       );
       return;
     }
@@ -807,7 +833,7 @@ export default function BrowserScreen() {
       if (bookmarked) {
         await databaseService.removeBookmark(currentTab.url);
         setBookmarked(false);
-        Alert.alert('Bookmark Removed', 'Page removed from bookmarks');
+        Alert.alert("Bookmark Removed", "Page removed from bookmarks");
       } else {
         await databaseService.addBookmark({
           url: currentTab.url,
@@ -816,11 +842,11 @@ export default function BrowserScreen() {
           favicon: currentTab.favicon,
         });
         setBookmarked(true);
-        Alert.alert('Bookmark Added', 'Page added to bookmarks');
+        Alert.alert("Bookmark Added", "Page added to bookmarks");
       }
     } catch (error) {
-      console.error('Failed to toggle bookmark:', error);
-      Alert.alert('Error', 'Failed to update bookmark');
+      console.error("Failed to toggle bookmark:", error);
+      Alert.alert("Error", "Failed to update bookmark");
     }
   };
 
@@ -828,9 +854,9 @@ export default function BrowserScreen() {
   const handleShowHistory = () => {
     if (currentTab?.isIncognito) {
       Alert.alert(
-        'Incognito Mode',
-        'History is not available in incognito mode.',
-        [{ text: 'OK' }]
+        "Incognito Mode",
+        "History is not available in incognito mode.",
+        [{ text: "OK" }],
       );
       return;
     }
@@ -862,59 +888,59 @@ export default function BrowserScreen() {
   }, []);
 
   const handleWebViewMessage = async (tabId: string, message: any) => {
-    console.log('WebView message:', message);
+    console.log("WebView message:", message);
 
     switch (message.type) {
-      case 'ai_button_clicked':
+      case "ai_button_clicked":
         setAIContext({
-          type: 'page_content',
+          type: "page_content",
           content: message.pageContent,
           title: message.pageTitle,
-          url: message.pageUrl
+          url: message.pageUrl,
         });
         setShowAIChat(true);
         break;
 
-      case 'text_selected':
+      case "text_selected":
         setAIContext({
-          type: 'selected_text',
+          type: "selected_text",
           content: message.selectedText,
-          url: message.pageUrl
+          url: message.pageUrl,
         });
         break;
 
-      case 'page_content_extracted':
-        console.log('Page content extracted:', message.content);
+      case "page_content_extracted":
+        console.log("Page content extracted:", message.content);
         break;
 
       // Handle custom scheme navigation
-      case 'navigate_to_settings':
+      case "navigate_to_settings":
         // Navigate to settings - you can implement this based on your navigation structure
-        console.log('Navigate to settings requested');
-        Alert.alert('Settings', 'Settings navigation not yet implemented');
+        console.log("Navigate to settings requested");
+        Alert.alert("Settings", "Settings navigation not yet implemented");
         break;
 
-      case 'navigate_to_bookmarks':
+      case "navigate_to_bookmarks":
         setBookmarksVisible(true);
         break;
 
-      case 'navigate_to_history':
+      case "navigate_to_history":
         if (currentTab?.isIncognito) {
           Alert.alert(
-            'Incognito Mode',
-            'History is not available in incognito mode.',
-            [{ text: 'OK' }]
+            "Incognito Mode",
+            "History is not available in incognito mode.",
+            [{ text: "OK" }],
           );
         } else {
           setHistoryVisible(true);
         }
         break;
 
-      case 'navigate_to_downloads':
+      case "navigate_to_downloads":
         setDownloadManagerVisible(true);
         break;
 
-      case 'home_page_loaded':
+      case "home_page_loaded":
         // Update tab information when home page loads
         if (message.url && message.title) {
           updateTab(tabId, {
@@ -926,57 +952,62 @@ export default function BrowserScreen() {
         }
         break;
 
-      case 'resources_extracted':
+      case "resources_extracted":
         // 处理从WebView接收到的资源数据
         handleResourcesExtracted(message.resources);
         break;
 
-      case 'user_script_executed':
+      case "user_script_executed":
         console.log(`User script executed: ${message.scriptName}`);
         break;
 
-      case 'user_script_error':
-        console.error(`User script error in ${message.scriptName}:`, message.error);
+      case "user_script_error":
+        console.error(
+          `User script error in ${message.scriptName}:`,
+          message.error,
+        );
         Alert.alert(
-          'User Script Error',
+          "User Script Error",
           `Script "${message.scriptName}" encountered an error: ${message.error}`,
-          [{ text: 'OK' }]
+          [{ text: "OK" }],
         );
         break;
 
-      case 'performance_metric':
+      case "performance_metric":
         performanceService.measureLoadTime(Date.now() - message.duration);
         break;
 
-      case 'memory_usage':
-        console.log('Memory usage:', message);
+      case "memory_usage":
+        console.log("Memory usage:", message);
         break;
 
-      case 'ai_script_injected':
+      case "ai_script_injected":
         console.log(`AI script injected in ${message.injectionTime}ms`);
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        console.log("Unknown message type:", message.type);
     }
   };
 
   // 处理从WebView提取的资源
   const handleResourcesExtracted = (rawResources: any[]) => {
     try {
-      const processedResources: ResourceItem[] = rawResources.map((resource, index) => ({
-        id: resource.id || `resource_${Date.now()}_${index}`,
-        url: resource.url,
-        type: resource.type || 'other',
-        name: resource.name || resource.url.split('/').pop() || 'unknown',
-        size: resource.size ? String(resource.size) : undefined,
-        extension: resource.extension,
-        thumbnail: resource.thumbnail,
-      }));
+      const processedResources: ResourceItem[] = rawResources.map(
+        (resource, index) => ({
+          id: resource.id || `resource_${Date.now()}_${index}`,
+          url: resource.url,
+          type: resource.type || "other",
+          name: resource.name || resource.url.split("/").pop() || "unknown",
+          size: resource.size ? String(resource.size) : undefined,
+          extension: resource.extension,
+          thumbnail: resource.thumbnail,
+        }),
+      );
       setPageResources(processedResources);
       console.log(`Extracted ${processedResources.length} resources from page`);
     } catch (error) {
-      console.error('Failed to process extracted resources:', error);
+      console.error("Failed to process extracted resources:", error);
     }
   };
 
@@ -987,14 +1018,14 @@ export default function BrowserScreen() {
       const resourceItem = {
         id: Date.now().toString(),
         url: resource.url,
-        type: resource.type || 'unknown',
-        name: resource.name || resource.url.split('/').pop() || 'unknown',
+        type: resource.type || "unknown",
+        name: resource.name || resource.url.split("/").pop() || "unknown",
         size: resource.size || 0,
         createdAt: new Date().toISOString(),
       };
-      setPageResources(prev => [...prev, resourceItem]);
+      setPageResources((prev) => [...prev, resourceItem]);
     } catch (error) {
-      console.error('Failed to handle sniffed resource:', error);
+      console.error("Failed to handle sniffed resource:", error);
     }
   };
 
@@ -1007,7 +1038,7 @@ export default function BrowserScreen() {
   const handleDownloadResource = (resource: ResourceItem) => {
     try {
       if (!resourceSnifferService.isDownloadableResource(resource.url)) {
-        Alert.alert('不支持的资源', '该资源类型不支持下载');
+        Alert.alert("不支持的资源", "该资源类型不支持下载");
         return;
       }
 
@@ -1017,25 +1048,27 @@ export default function BrowserScreen() {
       });
       handleDownloadRequest(resource.url, filename);
 
-      Alert.alert('开始下载', `正在下载: ${resource.name}`);
+      Alert.alert("开始下载", `正在下载: ${resource.name}`);
     } catch (error) {
-      console.error('Failed to download resource:', error);
-      Alert.alert('下载失败', '资源下载失败，请重试');
+      console.error("Failed to download resource:", error);
+      Alert.alert("下载失败", "资源下载失败，请重试");
     }
   };
 
   // 主页快捷方式管理
-  const handleUpdateHomePageShortcuts = async (shortcuts: HomePageShortcut[]) => {
+  const handleUpdateHomePageShortcuts = async (
+    shortcuts: HomePageShortcut[],
+  ) => {
     try {
-      const shortcutsWithTimestamp = shortcuts.map(shortcut => ({
+      const shortcutsWithTimestamp = shortcuts.map((shortcut) => ({
         ...shortcut,
         addedAt: shortcut.addedAt || new Date().toISOString(),
       }));
       await homePageService.updateShortcuts(shortcutsWithTimestamp as any);
       setHomePageShortcuts(shortcuts);
     } catch (error) {
-      console.error('Failed to update homepage shortcuts:', error);
-      Alert.alert('错误', '更新主页快捷方式失败');
+      console.error("Failed to update homepage shortcuts:", error);
+      Alert.alert("错误", "更新主页快捷方式失败");
     }
   };
 
@@ -1053,9 +1086,9 @@ export default function BrowserScreen() {
 
       // 重新加载快捷方式
       await loadHomePageSettings();
-      Alert.alert('添加成功', `"${currentTab.title}" 已添加到主页`);
+      Alert.alert("添加成功", `"${currentTab.title}" 已添加到主页`);
     } catch (err: any) {
-      Alert.alert('添加失败', err?.message || '无法添加到主页');
+      Alert.alert("添加失败", err?.message || "无法添加到主页");
     }
   };
 
@@ -1066,7 +1099,7 @@ export default function BrowserScreen() {
         url: homePageUrl,
         isLoading: false,
         progress: 0,
-        title: 'VaiBrowser 主页'
+        title: "VaiBrowser 主页",
       });
     }
   };
@@ -1082,7 +1115,7 @@ export default function BrowserScreen() {
         title: currentTab.title,
       });
     } catch (error) {
-      console.error('Share failed:', error);
+      console.error("Share failed:", error);
     }
   };
 
@@ -1129,112 +1162,118 @@ export default function BrowserScreen() {
 
     return [
       {
-        id: 'ai_chat',
-        title: 'AI 智能助手',
-        subtitle: aiConfigured ? '与AI进行智能对话' : '需要配置AI提供商',
-        icon: 'chatbubble-ellipses',
-        color: '#007AFF',
+        id: "ai_chat",
+        title: "AI 智能助手",
+        subtitle: aiConfigured ? "与AI进行智能对话" : "需要配置AI提供商",
+        icon: "chatbubble-ellipses",
+        color: "#007AFF",
         onPress: () => setShowAIChat(true),
         disabled: !aiConfigured,
       },
       {
-        id: 'ai_quick',
-        title: '快速AI对话',
-        subtitle: '基于当前页面内容的AI对话',
-        icon: 'sparkles',
-        color: '#5856D6',
+        id: "ai_quick",
+        title: "快速AI对话",
+        subtitle: "基于当前页面内容的AI对话",
+        icon: "sparkles",
+        color: "#5856D6",
         onPress: handleQuickAIChat,
         disabled: !aiConfigured,
       },
       {
-        id: 'tools_scripts',
-        title: '用户脚本',
+        id: "tools_scripts",
+        title: "用户脚本",
         subtitle: `${scriptStats?.enabledScripts || 0} 个脚本已启用`,
-        icon: 'code-slash',
-        color: '#AF52DE',
+        icon: "code-slash",
+        color: "#AF52DE",
         onPress: () => setShowUserScripts(true),
-        badge: scriptStats?.enabledScripts > 0 ? String(scriptStats.enabledScripts) : undefined,
+        badge:
+          scriptStats?.enabledScripts > 0
+            ? String(scriptStats.enabledScripts)
+            : undefined,
       },
       {
-        id: 'tools_resources',
-        title: '资源嗅探',
-        subtitle: '提取并下载页面资源',
-        icon: 'search',
-        color: '#34C759',
+        id: "tools_resources",
+        title: "资源嗅探",
+        subtitle: "提取并下载页面资源",
+        icon: "search",
+        color: "#34C759",
         onPress: () => setShowResourceSniffer(true),
       },
       {
-        id: 'tools_mcp',
-        title: 'MCP 工具',
+        id: "tools_mcp",
+        title: "MCP 工具",
         subtitle: `${mcpStats.connectedServers} 个服务器已连接`,
-        icon: 'extension-puzzle',
-        color: '#FF9500',
+        icon: "extension-puzzle",
+        color: "#FF9500",
         onPress: () => {
           // Navigate to settings MCP section
-          console.log('Navigate to MCP settings');
+          console.log("Navigate to MCP settings");
         },
-        badge: mcpStats.connectedServers > 0 ? String(mcpStats.connectedServers) : undefined,
+        badge:
+          mcpStats.connectedServers > 0
+            ? String(mcpStats.connectedServers)
+            : undefined,
       },
       {
-        id: 'browser_downloads',
-        title: '下载管理',
-        subtitle: '查看和管理下载文件',
-        icon: 'download',
-        color: '#FF3B30',
+        id: "browser_downloads",
+        title: "下载管理",
+        subtitle: "查看和管理下载文件",
+        icon: "download",
+        color: "#FF3B30",
         onPress: () => setDownloadManagerVisible(true),
         badge: downloads.length > 0 ? String(downloads.length) : undefined,
       },
       {
-        id: 'browser_bookmarks',
-        title: '书签',
-        subtitle: '管理收藏的网页',
-        icon: 'bookmark',
-        color: '#FF9500',
+        id: "browser_bookmarks",
+        title: "书签",
+        subtitle: "管理收藏的网页",
+        icon: "bookmark",
+        color: "#FF9500",
         onPress: () => setBookmarksVisible(true),
       },
       {
-        id: 'browser_history',
-        title: '浏览历史',
-        subtitle: currentTab?.isIncognito ? '隐身模式下不可用' : '查看浏览记录',
-        icon: 'time',
-        color: '#5856D6',
+        id: "browser_history",
+        title: "浏览历史",
+        subtitle: currentTab?.isIncognito ? "隐身模式下不可用" : "查看浏览记录",
+        icon: "time",
+        color: "#5856D6",
         onPress: () => setHistoryVisible(true),
         disabled: currentTab?.isIncognito,
       },
       {
-        id: 'browser_tabs',
-        title: '标签管理',
+        id: "browser_tabs",
+        title: "标签管理",
         subtitle: `当前有 ${tabs.length} 个标签页`,
-        icon: 'browsers',
-        color: '#007AFF',
+        icon: "browsers",
+        color: "#007AFF",
         onPress: () => setTabManagerVisible(true),
         badge: tabs.length > 1 ? String(tabs.length) : undefined,
       },
       {
-        id: 'browser_share',
-        title: '分享页面',
-        subtitle: '分享当前网页',
-        icon: 'share',
-        color: '#34C759',
+        id: "browser_share",
+        title: "分享页面",
+        subtitle: "分享当前网页",
+        icon: "share",
+        color: "#34C759",
         onPress: handleShare,
         disabled: !currentTab || currentTab.url === homePageUrl,
       },
       {
-        id: 'settings_performance',
-        title: '性能监控',
-        subtitle: performanceStats ?
-          `内存: ${Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB` :
-          '查看浏览器性能',
-        icon: 'speedometer',
-        color: '#FF3B30',
+        id: "settings_performance",
+        title: "性能监控",
+        subtitle: performanceStats
+          ? `内存: ${Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB`
+          : "查看浏览器性能",
+        icon: "speedometer",
+        color: "#FF3B30",
         onPress: () => {
           Alert.alert(
-            '性能统计',
+            "性能统计",
             `标签页: ${performanceStats?.totalTabs || 0}\n` +
-            `内存使用: ${Math.round((performanceStats?.averageMemoryUsage || 0) / 1024 / 1024)}MB\n` +
-            `平均加载时间: ${Math.round(performanceStats?.averageLoadTime || 0)}ms\n` +
-            `缓存命中率: ${Math.round(performanceStats?.cacheHitRate || 0)}%`,
-            [{ text: '确定' }]
+              `内存使用: ${Math.round((performanceStats?.averageMemoryUsage || 0) / 1024 / 1024)}MB\n` +
+              `平均加载时间: ${Math.round(performanceStats?.averageLoadTime || 0)}ms\n` +
+              `缓存命中率: ${Math.round(performanceStats?.cacheHitRate || 0)}%`,
+            [{ text: "确定" }],
           );
         },
       },
@@ -1259,8 +1298,12 @@ export default function BrowserScreen() {
           onShowHistory={() => setShowHistory(true)}
           shortcuts={homePageShortcuts}
           onUpdateShortcuts={handleUpdateHomePageShortcuts}
-          currentPageUrl={currentTab.url !== homePageUrl ? currentTab.url : undefined}
-          currentPageTitle={currentTab.url !== homePageUrl ? currentTab.title : undefined}
+          currentPageUrl={
+            currentTab.url !== homePageUrl ? currentTab.url : undefined
+          }
+          currentPageTitle={
+            currentTab.url !== homePageUrl ? currentTab.title : undefined
+          }
           aiConfigured={aiConfigured}
         />
       );
@@ -1272,51 +1315,93 @@ export default function BrowserScreen() {
   const renderQuickActions = () => (
     <View style={styles.quickActions}>
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowHistory(true)}
       >
         <Text style={styles.quickActionIcon}>📚</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>History</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          History
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowBookmarks(true)}
       >
         <Text style={styles.quickActionIcon}>⭐</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Bookmarks</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          Bookmarks
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowDownloads(true)}
       >
         <Text style={styles.quickActionIcon}>📥</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Downloads</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          Downloads
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowUserScripts(true)}
       >
         <Text style={styles.quickActionIcon}>🐒</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Scripts</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          Scripts
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowAIChat(true)}
       >
         <Text style={styles.quickActionIcon}>✨</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>AI Chat</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          AI Chat
+        </Text>
       </TouchableOpacity>
 
       <TouchableOpacity
-        style={[styles.quickActionButton, isDark && styles.quickActionButtonDark]}
+        style={[
+          styles.quickActionButton,
+          isDark && styles.quickActionButtonDark,
+        ]}
         onPress={() => setShowResourceSniffer(true)}
       >
         <Text style={styles.quickActionIcon}>🕵️</Text>
-        <Text style={[styles.quickActionText, isDark && styles.quickActionTextDark]}>Resources</Text>
+        <Text
+          style={[styles.quickActionText, isDark && styles.quickActionTextDark]}
+        >
+          Resources
+        </Text>
       </TouchableOpacity>
     </View>
   );
@@ -1325,16 +1410,33 @@ export default function BrowserScreen() {
     if (!performanceStats || tabs.length === 0) return null;
 
     return (
-      <View style={[styles.performanceIndicator, isDark && styles.performanceIndicatorDark]}>
-        <Text style={[styles.performanceText, isDark && styles.performanceTextDark]}>
-          🚀 {performanceStats.totalTabs} tabs •
-          📊 {Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB •
-          ⚡ {Math.round(performanceStats.averageLoadTime)}ms •
-          🤖 <Text style={{ color: aiService.isConfigured() ? '#4CAF50' : '#FF3B30' }}>
-            {aiService.isConfigured() ? 'AI' : 'OFF'}
-          </Text> •
-          🔧 <Text style={{ color: mcpService.getStatistics().connectedServers > 0 ? '#4CAF50' : '#8E8E93' }}>
-            {mcpService.getStatistics().connectedServers > 0 ? 'MCP' : 'OFF'}
+      <View
+        style={[
+          styles.performanceIndicator,
+          isDark && styles.performanceIndicatorDark,
+        ]}
+      >
+        <Text
+          style={[styles.performanceText, isDark && styles.performanceTextDark]}
+        >
+          🚀 {performanceStats.totalTabs} tabs • 📊{" "}
+          {Math.round(performanceStats.averageMemoryUsage / 1024 / 1024)}MB • ⚡{" "}
+          {Math.round(performanceStats.averageLoadTime)}ms • 🤖{" "}
+          <Text
+            style={{ color: aiService.isConfigured() ? "#4CAF50" : "#FF3B30" }}
+          >
+            {aiService.isConfigured() ? "AI" : "OFF"}
+          </Text>{" "}
+          • 🔧{" "}
+          <Text
+            style={{
+              color:
+                mcpService.getStatistics().connectedServers > 0
+                  ? "#4CAF50"
+                  : "#8E8E93",
+            }}
+          >
+            {mcpService.getStatistics().connectedServers > 0 ? "MCP" : "OFF"}
           </Text>
         </Text>
       </View>
@@ -1343,18 +1445,26 @@ export default function BrowserScreen() {
 
   if (!currentTab) {
     return (
-      <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
-        <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
-        <View style={styles.errorContainer}>
-          {/* Error state */}
-        </View>
+      <SafeAreaView
+        style={[
+          styles.container,
+          { backgroundColor: isDark ? "#000000" : "#FFFFFF" },
+        ]}
+      >
+        <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
+        <View style={styles.errorContainer}>{/* Error state */}</View>
       </SafeAreaView>
     );
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#000000' : '#FFFFFF' }]}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} />
+    <SafeAreaView
+      style={[
+        styles.container,
+        { backgroundColor: isDark ? "#000000" : "#FFFFFF" },
+      ]}
+    >
+      <StatusBar barStyle={isDark ? "light-content" : "dark-content"} />
 
       {/* Address Bar */}
       <AddressBar
@@ -1387,25 +1497,26 @@ export default function BrowserScreen() {
         onHome={handleNavigateToHome}
         onAddToHome={handleAddCurrentPageToHome}
         onShowToolsMenu={() => setShowToolsMenu(true)}
-        showAddToHome={currentTab.url !== homePageUrl && !homePageService.isCustomHomePage(currentTab.url)}
+        showAddToHome={
+          currentTab.url !== homePageUrl &&
+          !homePageService.isCustomHomePage(currentTab.url)
+        }
       />
 
       {/* Main Content Area */}
-      <View style={styles.contentContainer}>
-        {renderMainContent()}
-      </View>
+      <View style={styles.contentContainer}>{renderMainContent()}</View>
 
       {/* Performance Indicator */}
       {renderPerformanceIndicator()}
 
       {/* WebView Container */}
       <View style={styles.webViewContainer}>
-        {tabs.map(tab => (
+        {tabs.map((tab) => (
           <View
             key={tab.id}
             style={[
               styles.webViewWrapper,
-              { display: tab.id === activeTabId ? 'flex' : 'none' }
+              { display: tab.id === activeTabId ? "flex" : "none" },
             ]}
           >
             <BrowserWebView
@@ -1419,7 +1530,9 @@ export default function BrowserScreen() {
               onError={handleError}
               onMessage={handleWebViewMessage}
               onScroll={handleWebViewScroll}
-              navigationCommand={tab.id === activeTabId ? navigationCommand : null}
+              navigationCommand={
+                tab.id === activeTabId ? navigationCommand : null
+              }
               onNavigationCommandExecuted={handleNavigationCommandExecuted}
             />
           </View>
@@ -1496,7 +1609,7 @@ export default function BrowserScreen() {
       <DownloadManager
         isVisible={downloadManagerVisible}
         onClose={() => setDownloadManagerVisible(false)}
-        downloads={downloads.map(download => ({
+        downloads={downloads.map((download) => ({
           ...download,
           downloadedSize: download.downloadedSize || 0,
         }))}
@@ -1553,53 +1666,53 @@ const styles = StyleSheet.create({
   },
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
   },
   fullScreenModal: {
     margin: 0,
   },
   performanceIndicator: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     paddingHorizontal: 12,
     paddingVertical: 4,
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   performanceIndicatorDark: {
-    backgroundColor: '#2C2C2E',
-    borderBottomColor: '#48484A',
+    backgroundColor: "#2C2C2E",
+    borderBottomColor: "#48484A",
   },
   performanceText: {
     fontSize: 11,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
   },
   performanceTextDark: {
-    color: '#8E8E93',
+    color: "#8E8E93",
   },
   quickActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-around",
     paddingHorizontal: 20,
     paddingVertical: 30,
     gap: 15,
   },
   quickActionButton: {
-    backgroundColor: '#F8F9FA',
+    backgroundColor: "#F8F9FA",
     borderRadius: 16,
     padding: 20,
-    alignItems: 'center',
+    alignItems: "center",
     minWidth: 80,
-    shadowColor: '#000',
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
   },
   quickActionButtonDark: {
-    backgroundColor: '#2C2C2E',
+    backgroundColor: "#2C2C2E",
   },
   quickActionIcon: {
     fontSize: 32,
@@ -1607,12 +1720,12 @@ const styles = StyleSheet.create({
   },
   quickActionText: {
     fontSize: 12,
-    fontWeight: '600',
-    color: '#333',
-    textAlign: 'center',
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
   },
   quickActionTextDark: {
-    color: '#FFF',
+    color: "#FFF",
   },
   contentContainer: {
     flex: 1,

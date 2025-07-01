@@ -11,7 +11,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import Modal from "react-native-modal";
@@ -46,7 +46,9 @@ export default function AIChatPanel({
 }: AIChatPanelProps) {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
+    null,
+  );
   const [messages, setMessages] = useState<Message[]>([]);
   const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const colorScheme = useColorScheme();
@@ -92,11 +94,11 @@ export default function AIChatPanel({
     try {
       // Create new session for current page
       const sessionId = await DatabaseService.createChatSession(
-        currentPageTitle || "Web Page Chat", 
-        currentPageUrl
+        currentPageTitle || "Web Page Chat",
+        currentPageUrl,
       );
       setCurrentSessionId(sessionId);
-      
+
       // Load existing messages for this session
       const existingMessages = await DatabaseService.getChatMessages(sessionId);
       setMessages(existingMessages);
@@ -134,7 +136,7 @@ export default function AIChatPanel({
       };
 
       // Add user message to state and database
-      setMessages(prev => [...prev, userMessage]);
+      setMessages((prev) => [...prev, userMessage]);
       await DatabaseService.saveChatMessage(userMessage, currentSessionId);
 
       // Create context from current page
@@ -152,7 +154,7 @@ export default function AIChatPanel({
         createdAt: new Date(),
       };
 
-      setMessages(prev => [...prev, assistantMessage]);
+      setMessages((prev) => [...prev, assistantMessage]);
       setStreamingMessageId(assistantMessage.id);
 
       // Get response stream
@@ -168,12 +170,12 @@ export default function AIChatPanel({
           accumulatedResponse += value;
 
           // Update the streaming message
-          setMessages(prev => 
-            prev.map(msg => 
-              msg.id === assistantMessage.id 
+          setMessages((prev) =>
+            prev.map((msg) =>
+              msg.id === assistantMessage.id
                 ? { ...msg, content: accumulatedResponse }
-                : msg
-            )
+                : msg,
+            ),
           );
         }
 
@@ -182,8 +184,10 @@ export default function AIChatPanel({
           ...assistantMessage,
           content: accumulatedResponse,
         };
-        await DatabaseService.saveChatMessage(finalAssistantMessage, currentSessionId);
-
+        await DatabaseService.saveChatMessage(
+          finalAssistantMessage,
+          currentSessionId,
+        );
       } finally {
         reader.releaseLock();
         setStreamingMessageId(null);
@@ -198,7 +202,7 @@ export default function AIChatPanel({
 
   const handleClearHistory = async () => {
     if (!currentSessionId) return;
-    
+
     try {
       await DatabaseService.clearChatHistory(currentSessionId);
       setMessages([]);
@@ -243,7 +247,10 @@ export default function AIChatPanel({
   };
 
   const formatTimestamp = (timestamp: Date) => {
-    return timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return timestamp.toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   };
 
   const renderMarkdownContent = (content: string) => {
@@ -319,15 +326,14 @@ export default function AIChatPanel({
       },
     };
 
-    return (
-      <Markdown style={markdownStyles}>
-        {content}
-      </Markdown>
-    );
+    return <Markdown style={markdownStyles}>{content}</Markdown>;
   };
 
   const renderMessage = ({ item }: { item: Message }) => {
-    const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+    const content =
+      typeof item.content === "string"
+        ? item.content
+        : JSON.stringify(item.content);
     const isStreaming = streamingMessageId === item.id;
 
     return (
@@ -342,17 +348,16 @@ export default function AIChatPanel({
             styles.messageBubble,
             {
               backgroundColor:
-                item.role === "user" ? "#007AFF" : isDark ? "#2C2C2E" : "#F2F2F7",
+                item.role === "user"
+                  ? "#007AFF"
+                  : isDark
+                    ? "#2C2C2E"
+                    : "#F2F2F7",
             },
           ]}
         >
           {item.role === "user" ? (
-            <Text
-              style={[
-                styles.messageText,
-                { color: "#FFFFFF" },
-              ]}
-            >
+            <Text style={[styles.messageText, { color: "#FFFFFF" }]}>
               {content}
             </Text>
           ) : (

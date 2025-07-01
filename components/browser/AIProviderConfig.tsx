@@ -1,16 +1,21 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
-} from 'react-native';
-import { AIConfig, AIModel, AIProvider, aiService } from '../../services/AIService';
+  ActivityIndicator,
+  Alert,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import {
+  AIConfig,
+  AIModel,
+  AIProvider,
+  aiService,
+} from "../../services/AIService";
 
 interface AIProviderConfigProps {
   visible: boolean;
@@ -18,9 +23,15 @@ interface AIProviderConfigProps {
   onConfigSaved?: () => void;
 }
 
-export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AIProviderConfigProps) {
+export default function AIProviderConfig({
+  visible,
+  onClose,
+  onConfigSaved,
+}: AIProviderConfigProps) {
   const [providers, setProviders] = useState<AIProvider[]>([]);
-  const [selectedProvider, setSelectedProvider] = useState<AIProvider | null>(null);
+  const [selectedProvider, setSelectedProvider] = useState<AIProvider | null>(
+    null,
+  );
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
   const [config, setConfig] = useState<{ [key: string]: string }>({});
   const [currentConfig, setCurrentConfig] = useState<AIConfig | null>(null);
@@ -42,17 +53,19 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       setCurrentConfig(savedConfig);
 
       if (savedConfig) {
-        const provider = availableProviders.find(p => p.id === savedConfig.provider);
+        const provider = availableProviders.find(
+          (p) => p.id === savedConfig.provider,
+        );
         if (provider) {
           setSelectedProvider(provider);
-          const model = provider.models.find(m => m.id === savedConfig.model);
+          const model = provider.models.find((m) => m.id === savedConfig.model);
           if (model) {
             setSelectedModel(model);
           }
-          
+
           // Load saved configuration values
           const configValues: { [key: string]: string } = {};
-          provider.configFields.forEach(field => {
+          provider.configFields.forEach((field) => {
             if (savedConfig[field.key]) {
               configValues[field.key] = savedConfig[field.key];
             }
@@ -61,18 +74,18 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
         }
       }
     } catch (error) {
-      console.error('Failed to load AI config:', error);
+      console.error("Failed to load AI config:", error);
     }
   };
 
   const handleProviderSelect = (provider: AIProvider) => {
     setSelectedProvider(provider);
     setSelectedModel(null);
-    
+
     // Initialize config with empty values
     const initialConfig: { [key: string]: string } = {};
-    provider.configFields.forEach(field => {
-      initialConfig[field.key] = '';
+    provider.configFields.forEach((field) => {
+      initialConfig[field.key] = "";
     });
     setConfig(initialConfig);
   };
@@ -82,7 +95,7 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
   };
 
   const handleConfigChange = (key: string, value: string) => {
-    setConfig(prev => ({
+    setConfig((prev) => ({
       ...prev,
       [key]: value,
     }));
@@ -90,17 +103,20 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
 
   const testConfiguration = async () => {
     if (!selectedProvider || !selectedModel) {
-      Alert.alert('Error', 'Please select a provider and model');
+      Alert.alert("Error", "Please select a provider and model");
       return;
     }
 
     // Validate required fields
     const missingFields = selectedProvider.configFields
-      .filter(field => field.required && !config[field.key])
-      .map(field => field.label);
+      .filter((field) => field.required && !config[field.key])
+      .map((field) => field.label);
 
     if (missingFields.length > 0) {
-      Alert.alert('Error', `Please fill in required fields: ${missingFields.join(', ')}`);
+      Alert.alert(
+        "Error",
+        `Please fill in required fields: ${missingFields.join(", ")}`,
+      );
       return;
     }
 
@@ -113,14 +129,20 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       };
 
       const success = await aiService.testProvider(testConfig);
-      
+
       if (success) {
-        Alert.alert('Success', 'Configuration test passed! The AI provider is working correctly.');
+        Alert.alert(
+          "Success",
+          "Configuration test passed! The AI provider is working correctly.",
+        );
       } else {
-        Alert.alert('Error', 'Configuration test failed. Please check your settings.');
+        Alert.alert(
+          "Error",
+          "Configuration test failed. Please check your settings.",
+        );
       }
     } catch (error) {
-      Alert.alert('Error', `Test failed: ${error}`);
+      Alert.alert("Error", `Test failed: ${error}`);
     } finally {
       setTesting(false);
     }
@@ -128,17 +150,20 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
 
   const saveConfiguration = async () => {
     if (!selectedProvider || !selectedModel) {
-      Alert.alert('Error', 'Please select a provider and model');
+      Alert.alert("Error", "Please select a provider and model");
       return;
     }
 
     // Validate required fields
     const missingFields = selectedProvider.configFields
-      .filter(field => field.required && !config[field.key])
-      .map(field => field.label);
+      .filter((field) => field.required && !config[field.key])
+      .map((field) => field.label);
 
     if (missingFields.length > 0) {
-      Alert.alert('Error', `Please fill in required fields: ${missingFields.join(', ')}`);
+      Alert.alert(
+        "Error",
+        `Please fill in required fields: ${missingFields.join(", ")}`,
+      );
       return;
     }
 
@@ -151,22 +176,18 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       };
 
       await aiService.saveConfig(newConfig);
-      
-      Alert.alert(
-        'Success',
-        'AI configuration saved successfully!',
-        [
-          {
-            text: 'OK',
-            onPress: () => {
-              onConfigSaved?.();
-              onClose();
-            },
+
+      Alert.alert("Success", "AI configuration saved successfully!", [
+        {
+          text: "OK",
+          onPress: () => {
+            onConfigSaved?.();
+            onClose();
           },
-        ]
-      );
+        },
+      ]);
     } catch (error) {
-      Alert.alert('Error', `Failed to save configuration: ${error}`);
+      Alert.alert("Error", `Failed to save configuration: ${error}`);
     } finally {
       setSaving(false);
     }
@@ -174,13 +195,13 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
 
   const clearConfiguration = () => {
     Alert.alert(
-      'Clear Configuration',
-      'Are you sure you want to clear the AI configuration?',
+      "Clear Configuration",
+      "Are you sure you want to clear the AI configuration?",
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: "Cancel", style: "cancel" },
         {
-          text: 'Clear',
-          style: 'destructive',
+          text: "Clear",
+          style: "destructive",
           onPress: async () => {
             try {
               await aiService.clearConfig();
@@ -188,13 +209,13 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
               setSelectedModel(null);
               setConfig({});
               setCurrentConfig(null);
-              Alert.alert('Success', 'Configuration cleared successfully');
+              Alert.alert("Success", "Configuration cleared successfully");
             } catch (error) {
-              Alert.alert('Error', `Failed to clear configuration: ${error}`);
+              Alert.alert("Error", `Failed to clear configuration: ${error}`);
             }
           },
         },
-      ]
+      ],
     );
   };
 
@@ -203,7 +224,7 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       key={provider.id}
       style={[
         styles.providerCard,
-        selectedProvider?.id === provider.id && styles.selectedProviderCard
+        selectedProvider?.id === provider.id && styles.selectedProviderCard,
       ]}
       onPress={() => handleProviderSelect(provider)}
     >
@@ -219,7 +240,9 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
           </View>
         )}
       </View>
-      <Text style={styles.modelCount}>{provider.models.length} models available</Text>
+      <Text style={styles.modelCount}>
+        {provider.models.length} models available
+      </Text>
     </TouchableOpacity>
   );
 
@@ -228,13 +251,13 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       key={model.id}
       style={[
         styles.modelCard,
-        selectedModel?.id === model.id && styles.selectedModelCard
+        selectedModel?.id === model.id && styles.selectedModelCard,
       ]}
       onPress={() => handleModelSelect(model)}
     >
       <Text style={styles.modelName}>{model.name}</Text>
       <Text style={styles.modelDescription}>{model.description}</Text>
-      
+
       <View style={styles.capabilityTags}>
         {model.capabilities.imageInput && (
           <View style={styles.capabilityTag}>
@@ -266,22 +289,26 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
         {field.label}
         {field.required && <Text style={styles.required}> *</Text>}
       </Text>
-      
-      {field.type === 'select' ? (
+
+      {field.type === "select" ? (
         <View style={styles.selectContainer}>
           {field.options?.map((option: any) => (
             <TouchableOpacity
               key={option.value}
               style={[
                 styles.selectOption,
-                config[field.key] === option.value && styles.selectedSelectOption
+                config[field.key] === option.value &&
+                  styles.selectedSelectOption,
               ]}
               onPress={() => handleConfigChange(field.key, option.value)}
             >
-              <Text style={[
-                styles.selectOptionText,
-                config[field.key] === option.value && styles.selectedSelectOptionText
-              ]}>
+              <Text
+                style={[
+                  styles.selectOptionText,
+                  config[field.key] === option.value &&
+                    styles.selectedSelectOptionText,
+                ]}
+              >
                 {option.label}
               </Text>
             </TouchableOpacity>
@@ -290,11 +317,11 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
       ) : (
         <TextInput
           style={styles.configInput}
-          value={config[field.key] || ''}
+          value={config[field.key] || ""}
           onChangeText={(value) => handleConfigChange(field.key, value)}
           placeholder={field.placeholder}
-          secureTextEntry={field.type === 'password'}
-          keyboardType={field.type === 'number' ? 'numeric' : 'default'}
+          secureTextEntry={field.type === "password"}
+          keyboardType={field.type === "number" ? "numeric" : "default"}
           autoCapitalize="none"
           autoCorrect={false}
         />
@@ -303,7 +330,11 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
   );
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
       <View style={styles.container}>
         <View style={styles.header}>
           <Text style={styles.title}>🤖 AI Provider Configuration</Text>
@@ -318,9 +349,13 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
             <View style={styles.statusCard}>
               <Text style={styles.statusTitle}>Current Configuration</Text>
               <Text style={styles.statusText}>
-                Provider: {currentConfig.provider} | Model: {currentConfig.model}
+                Provider: {currentConfig.provider} | Model:{" "}
+                {currentConfig.model}
               </Text>
-              <TouchableOpacity style={styles.clearButton} onPress={clearConfiguration}>
+              <TouchableOpacity
+                style={styles.clearButton}
+                onPress={clearConfiguration}
+              >
                 <Text style={styles.clearButtonText}>Clear Configuration</Text>
               </TouchableOpacity>
             </View>
@@ -332,7 +367,7 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
             <Text style={styles.sectionDescription}>
               Choose from {providers.length} supported AI providers
             </Text>
-            
+
             {providers.map(renderProviderCard)}
           </View>
 
@@ -343,7 +378,7 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
               <Text style={styles.sectionDescription}>
                 Choose from {selectedProvider.models.length} available models
               </Text>
-              
+
               {selectedProvider.models.map(renderModelCard)}
             </View>
           )}
@@ -355,7 +390,7 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
               <Text style={styles.sectionDescription}>
                 Configure your {selectedProvider.name} settings
               </Text>
-              
+
               {selectedProvider.configFields.map(renderConfigField)}
             </View>
           )}
@@ -371,7 +406,9 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
                 {testing ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text style={styles.actionButtonText}>🧪 Test Configuration</Text>
+                  <Text style={styles.actionButtonText}>
+                    🧪 Test Configuration
+                  </Text>
                 )}
               </TouchableOpacity>
 
@@ -383,7 +420,9 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
                 {saving ? (
                   <ActivityIndicator size="small" color="#FFF" />
                 ) : (
-                  <Text style={styles.actionButtonText}>💾 Save Configuration</Text>
+                  <Text style={styles.actionButtonText}>
+                    💾 Save Configuration
+                  </Text>
                 )}
               </TouchableOpacity>
             </View>
@@ -393,10 +432,9 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
           <View style={styles.infoSection}>
             <Text style={styles.infoTitle}>ℹ️ Information</Text>
             <Text style={styles.infoText}>
-              • All API keys are stored securely on your device{'\n'}
-              • Test your configuration before saving{'\n'}
-              • You can change providers anytime{'\n'}
-              • Different models have different capabilities
+              • All API keys are stored securely on your device{"\n"}• Test your
+              configuration before saving{"\n"}• You can change providers
+              anytime{"\n"}• Different models have different capabilities
             </Text>
           </View>
         </ScrollView>
@@ -408,92 +446,92 @@ export default function AIProviderConfig({ visible, onClose, onConfigSaved }: AI
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F5F5F5',
+    backgroundColor: "#F5F5F5",
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     padding: 16,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     borderBottomWidth: 1,
-    borderBottomColor: '#E0E0E0',
+    borderBottomColor: "#E0E0E0",
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
   },
   closeButton: {
     padding: 8,
   },
   closeButtonText: {
-    color: '#007AFF',
+    color: "#007AFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   content: {
     flex: 1,
     padding: 16,
   },
   statusCard: {
-    backgroundColor: '#E8F5E8',
+    backgroundColor: "#E8F5E8",
     padding: 16,
     borderRadius: 12,
     marginBottom: 24,
   },
   statusTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#2D5A2D',
+    fontWeight: "600",
+    color: "#2D5A2D",
     marginBottom: 8,
   },
   statusText: {
     fontSize: 14,
-    color: '#5A7A5A',
+    color: "#5A7A5A",
     marginBottom: 12,
   },
   clearButton: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     paddingHorizontal: 12,
     paddingVertical: 6,
-    backgroundColor: '#FF6B6B',
+    backgroundColor: "#FF6B6B",
     borderRadius: 6,
   },
   clearButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   section: {
     marginBottom: 32,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#333',
+    fontWeight: "bold",
+    color: "#333",
     marginBottom: 8,
   },
   sectionDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     marginBottom: 16,
   },
   providerCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     padding: 16,
     borderRadius: 12,
     marginBottom: 12,
     borderWidth: 2,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   selectedProviderCard: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F8FF',
+    borderColor: "#007AFF",
+    backgroundColor: "#F0F8FF",
   },
   providerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 8,
   },
   providerIcon: {
@@ -505,85 +543,85 @@ const styles = StyleSheet.create({
   },
   providerName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   providerDescription: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
   },
   currentBadge: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 12,
   },
   currentBadgeText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   modelCount: {
     fontSize: 12,
-    color: '#888',
+    color: "#888",
   },
   modelCard: {
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     padding: 12,
     borderRadius: 8,
     marginBottom: 8,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
   },
   selectedModelCard: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F8FF',
+    borderColor: "#007AFF",
+    backgroundColor: "#F0F8FF",
   },
   modelName: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 4,
   },
   modelDescription: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
     marginBottom: 8,
   },
   capabilityTags: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 4,
   },
   capabilityTag: {
-    backgroundColor: '#F0F0F0',
+    backgroundColor: "#F0F0F0",
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
   },
   capabilityText: {
     fontSize: 10,
-    color: '#666',
+    color: "#666",
   },
   configField: {
     marginBottom: 16,
   },
   configLabel: {
     fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   required: {
-    color: '#FF6B6B',
+    color: "#FF6B6B",
   },
   configInput: {
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 8,
     padding: 12,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
     fontSize: 14,
   },
   selectContainer: {
@@ -592,21 +630,21 @@ const styles = StyleSheet.create({
   selectOption: {
     padding: 12,
     borderWidth: 1,
-    borderColor: '#E0E0E0',
+    borderColor: "#E0E0E0",
     borderRadius: 8,
-    backgroundColor: '#FFF',
+    backgroundColor: "#FFF",
   },
   selectedSelectOption: {
-    borderColor: '#007AFF',
-    backgroundColor: '#F0F8FF',
+    borderColor: "#007AFF",
+    backgroundColor: "#F0F8FF",
   },
   selectOptionText: {
     fontSize: 14,
-    color: '#333',
+    color: "#333",
   },
   selectedSelectOptionText: {
-    color: '#007AFF',
-    fontWeight: '600',
+    color: "#007AFF",
+    fontWeight: "600",
   },
   actionSection: {
     gap: 12,
@@ -615,37 +653,38 @@ const styles = StyleSheet.create({
   actionButton: {
     padding: 16,
     borderRadius: 12,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
     gap: 8,
   },
   testButton: {
-    backgroundColor: '#FF9500',
+    backgroundColor: "#FF9500",
   },
   saveButton: {
-    backgroundColor: '#4CAF50',
+    backgroundColor: "#4CAF50",
   },
   actionButtonText: {
-    color: '#FFF',
+    color: "#FFF",
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   infoSection: {
-    backgroundColor: '#F0F8FF',
+    backgroundColor: "#F0F8FF",
     padding: 16,
     borderRadius: 12,
     marginBottom: 32,
   },
   infoTitle: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 8,
   },
   infoText: {
     fontSize: 14,
-    color: '#666',
+    color: "#666",
     lineHeight: 20,
   },
-}); 
+});
+

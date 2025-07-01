@@ -25,7 +25,7 @@ class ResourceSnifferService {
         const extractResources = () => {
           const resources = [];
           const baseUrl = window.location.origin;
-          
+
           // 辅助函数：获取绝对URL
           const getAbsoluteUrl = (url) => {
             if (!url) return '';
@@ -40,7 +40,7 @@ class ResourceSnifferService {
             }
             return new URL(url, window.location.href).href;
           };
-          
+
           // 辅助函数：获取文件扩展名
           const getFileExtension = (url) => {
             try {
@@ -51,7 +51,7 @@ class ResourceSnifferService {
               return '';
             }
           };
-          
+
           // 辅助函数：获取文件名
           const getFileName = (url) => {
             try {
@@ -62,18 +62,18 @@ class ResourceSnifferService {
               return 'unknown';
             }
           };
-          
+
           // 辅助函数：确定资源类型
           const getResourceType = (url, tagName, mimeType) => {
             const extension = getFileExtension(url);
-            
+
             // 根据标签类型判断
             if (tagName === 'IMG') return 'image';
             if (tagName === 'VIDEO') return 'video';
             if (tagName === 'AUDIO') return 'audio';
             if (tagName === 'SCRIPT') return 'script';
             if (tagName === 'LINK' && mimeType && mimeType.includes('css')) return 'style';
-            
+
             // 根据文件扩展名判断
             const imageExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico'];
             const videoExts = ['mp4', 'avi', 'mov', 'wmv', 'flv', 'webm', 'mkv', 'm4v'];
@@ -81,17 +81,17 @@ class ResourceSnifferService {
             const documentExts = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf'];
             const scriptExts = ['js', 'ts', 'jsx', 'tsx'];
             const styleExts = ['css', 'scss', 'sass', 'less'];
-            
+
             if (imageExts.includes(extension)) return 'image';
             if (videoExts.includes(extension)) return 'video';
             if (audioExts.includes(extension)) return 'audio';
             if (documentExts.includes(extension)) return 'document';
             if (scriptExts.includes(extension)) return 'script';
             if (styleExts.includes(extension)) return 'style';
-            
+
             return 'other';
           };
-          
+
           // 提取图片资源
           const images = document.querySelectorAll('img[src]');
           images.forEach((img, index) => {
@@ -107,7 +107,7 @@ class ResourceSnifferService {
               });
             }
           });
-          
+
           // 提取视频资源
           const videos = document.querySelectorAll('video[src], video source[src]');
           videos.forEach((video, index) => {
@@ -122,7 +122,7 @@ class ResourceSnifferService {
               });
             }
           });
-          
+
           // 提取音频资源
           const audios = document.querySelectorAll('audio[src], audio source[src]');
           audios.forEach((audio, index) => {
@@ -137,7 +137,7 @@ class ResourceSnifferService {
               });
             }
           });
-          
+
           // 提取链接资源（可能是文档）
           const links = document.querySelectorAll('a[href]');
           links.forEach((link, index) => {
@@ -155,7 +155,7 @@ class ResourceSnifferService {
               }
             }
           });
-          
+
           // 提取脚本资源
           const scripts = document.querySelectorAll('script[src]');
           scripts.forEach((script, index) => {
@@ -170,7 +170,7 @@ class ResourceSnifferService {
               });
             }
           });
-          
+
           // 提取样式表资源
           const stylesheets = document.querySelectorAll('link[rel="stylesheet"][href]');
           stylesheets.forEach((link, index) => {
@@ -185,7 +185,7 @@ class ResourceSnifferService {
               });
             }
           });
-          
+
           // 提取背景图片（CSS中的）
           const elementsWithBg = document.querySelectorAll('*');
           elementsWithBg.forEach((element, index) => {
@@ -208,10 +208,10 @@ class ResourceSnifferService {
               }
             }
           });
-          
+
           return resources;
         };
-        
+
         // 监听资源嗅探请求
         window.addEventListener('message', (event) => {
           try {
@@ -228,7 +228,7 @@ class ResourceSnifferService {
             console.error('Resource sniffer error:', error);
           }
         });
-        
+
         // 自动提取资源并发送
         const resources = extractResources();
         window.ReactNativeWebView.postMessage(JSON.stringify({
@@ -236,9 +236,9 @@ class ResourceSnifferService {
           resources: resources,
           timestamp: Date.now()
         }));
-        
+
       })();
-      
+
       true; // Required for iOS
     `;
   }

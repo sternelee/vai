@@ -1,4 +1,4 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export interface HomePageShortcut {
   id: string;
@@ -16,8 +16,8 @@ export interface HomePageSettings {
 
 class HomePageService {
   private static instance: HomePageService;
-  private readonly STORAGE_KEY = 'homepage_settings';
-  private readonly DEFAULT_HOME_URL = 'vai://home';
+  private readonly STORAGE_KEY = "homepage_settings";
+  private readonly DEFAULT_HOME_URL = "vai://home";
 
   public static getInstance(): HomePageService {
     if (!HomePageService.instance) {
@@ -33,7 +33,7 @@ class HomePageService {
       if (stored) {
         return JSON.parse(stored);
       }
-      
+
       // 返回默认设置
       return {
         isCustomHomeEnabled: true,
@@ -41,7 +41,7 @@ class HomePageService {
         shortcuts: [],
       };
     } catch (error) {
-      console.error('Failed to get homepage settings:', error);
+      console.error("Failed to get homepage settings:", error);
       return {
         isCustomHomeEnabled: true,
         homePageUrl: this.DEFAULT_HOME_URL,
@@ -55,7 +55,7 @@ class HomePageService {
     try {
       await AsyncStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
     } catch (error) {
-      console.error('Failed to save homepage settings:', error);
+      console.error("Failed to save homepage settings:", error);
       throw error;
     }
   }
@@ -67,13 +67,15 @@ class HomePageService {
   }
 
   // 添加快捷方式
-  public async addShortcut(shortcut: Omit<HomePageShortcut, 'id' | 'addedAt'>): Promise<HomePageShortcut> {
+  public async addShortcut(
+    shortcut: Omit<HomePageShortcut, "id" | "addedAt">,
+  ): Promise<HomePageShortcut> {
     const settings = await this.getHomePageSettings();
-    
+
     // 检查是否已存在相同URL的快捷方式
-    const exists = settings.shortcuts.some(s => s.url === shortcut.url);
+    const exists = settings.shortcuts.some((s) => s.url === shortcut.url);
     if (exists) {
-      throw new Error('该页面已经添加到主页');
+      throw new Error("该页面已经添加到主页");
     }
 
     const newShortcut: HomePageShortcut = {
@@ -84,24 +86,27 @@ class HomePageService {
 
     settings.shortcuts.push(newShortcut);
     await this.saveHomePageSettings(settings);
-    
+
     return newShortcut;
   }
 
   // 删除快捷方式
   public async removeShortcut(shortcutId: string): Promise<void> {
     const settings = await this.getHomePageSettings();
-    settings.shortcuts = settings.shortcuts.filter(s => s.id !== shortcutId);
+    settings.shortcuts = settings.shortcuts.filter((s) => s.id !== shortcutId);
     await this.saveHomePageSettings(settings);
   }
 
   // 更新快捷方式
-  public async updateShortcut(shortcutId: string, updates: Partial<HomePageShortcut>): Promise<void> {
+  public async updateShortcut(
+    shortcutId: string,
+    updates: Partial<HomePageShortcut>,
+  ): Promise<void> {
     const settings = await this.getHomePageSettings();
-    const index = settings.shortcuts.findIndex(s => s.id === shortcutId);
-    
+    const index = settings.shortcuts.findIndex((s) => s.id === shortcutId);
+
     if (index === -1) {
-      throw new Error('快捷方式不存在');
+      throw new Error("快捷方式不存在");
     }
 
     settings.shortcuts[index] = { ...settings.shortcuts[index], ...updates };
@@ -132,7 +137,9 @@ class HomePageService {
   // 获取主页URL
   public async getHomePageUrl(): Promise<string> {
     const settings = await this.getHomePageSettings();
-    return settings.isCustomHomeEnabled ? settings.homePageUrl : 'https://www.google.com';
+    return settings.isCustomHomeEnabled
+      ? settings.homePageUrl
+      : "https://www.google.com";
   }
 
   // 检查是否为自定义主页URL
@@ -151,7 +158,7 @@ class HomePageService {
       const urlObj = new URL(url);
       return `${urlObj.protocol}//${urlObj.hostname}/favicon.ico`;
     } catch {
-      return '';
+      return "";
     }
   }
 
@@ -165,16 +172,16 @@ class HomePageService {
   public async importSettings(settingsJson: string): Promise<void> {
     try {
       const settings = JSON.parse(settingsJson) as HomePageSettings;
-      
+
       // 验证设置格式
       if (!settings.shortcuts || !Array.isArray(settings.shortcuts)) {
-        throw new Error('Invalid settings format');
+        throw new Error("Invalid settings format");
       }
 
       await this.saveHomePageSettings(settings);
     } catch (error) {
-      console.error('Failed to import settings:', error);
-      throw new Error('导入设置失败，请检查文件格式');
+      console.error("Failed to import settings:", error);
+      throw new Error("导入设置失败，请检查文件格式");
     }
   }
 
@@ -185,7 +192,7 @@ class HomePageService {
       homePageUrl: this.DEFAULT_HOME_URL,
       shortcuts: [],
     };
-    
+
     await this.saveHomePageSettings(defaultSettings);
   }
 
@@ -196,7 +203,7 @@ class HomePageService {
     cutoffDate.setDate(cutoffDate.getDate() - daysOld);
 
     const originalCount = settings.shortcuts.length;
-    settings.shortcuts = settings.shortcuts.filter(shortcut => {
+    settings.shortcuts = settings.shortcuts.filter((shortcut) => {
       const addedDate = new Date(shortcut.addedAt);
       return addedDate > cutoffDate;
     });
@@ -209,10 +216,11 @@ class HomePageService {
   public async searchShortcuts(query: string): Promise<HomePageShortcut[]> {
     const shortcuts = await this.getShortcuts();
     const lowerQuery = query.toLowerCase();
-    
-    return shortcuts.filter(shortcut => 
-      shortcut.title.toLowerCase().includes(lowerQuery) ||
-      shortcut.url.toLowerCase().includes(lowerQuery)
+
+    return shortcuts.filter(
+      (shortcut) =>
+        shortcut.title.toLowerCase().includes(lowerQuery) ||
+        shortcut.url.toLowerCase().includes(lowerQuery),
     );
   }
 
@@ -224,7 +232,7 @@ class HomePageService {
     newestShortcut?: HomePageShortcut;
   }> {
     const shortcuts = await this.getShortcuts();
-    
+
     if (shortcuts.length === 0) {
       return {
         totalShortcuts: 0,
@@ -234,14 +242,14 @@ class HomePageService {
 
     const now = new Date();
     const thisMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    
-    const addedThisMonth = shortcuts.filter(shortcut => {
+
+    const addedThisMonth = shortcuts.filter((shortcut) => {
       const addedDate = new Date(shortcut.addedAt);
       return addedDate >= thisMonth;
     }).length;
 
-    const sortedByDate = [...shortcuts].sort((a, b) => 
-      new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime()
+    const sortedByDate = [...shortcuts].sort(
+      (a, b) => new Date(a.addedAt).getTime() - new Date(b.addedAt).getTime(),
     );
 
     return {
@@ -254,4 +262,5 @@ class HomePageService {
 }
 
 export const homePageService = HomePageService.getInstance();
-export default HomePageService; 
+export default HomePageService;
+
