@@ -1,14 +1,14 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
 import type { ChatSessionInfo, Message } from "../types/chat";
-import { database, rawDatabase } from "./database/config";
+import { database, sqlite } from "../db/drizzle";
 import {
   bookmarks,
   chatMessages,
   chatSessions,
   downloads,
   history,
-  userScripts
-} from "./database/schema";
+  userScripts,
+} from "../db/schema";
 
 // Legacy interfaces for backward compatibility
 export interface HistoryItem {
@@ -55,9 +55,10 @@ class DatabaseService {
   }
 
   private async createTables(): Promise<void> {
+    console.log("Creating tables...", sqlite);
     try {
       // Create tables using raw SQL for initial setup
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL,
@@ -67,7 +68,7 @@ class DatabaseService {
         )
       `);
 
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS bookmarks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL UNIQUE,
@@ -78,7 +79,7 @@ class DatabaseService {
         )
       `);
 
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS downloads (
           id TEXT PRIMARY KEY,
           url TEXT NOT NULL,
@@ -97,7 +98,7 @@ class DatabaseService {
         )
       `);
 
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS user_scripts (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -124,7 +125,7 @@ class DatabaseService {
       `);
 
       // Create chat-related tables
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS chat_sessions (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
@@ -136,7 +137,7 @@ class DatabaseService {
         )
       `);
 
-      await rawDatabase.execute(`
+      await sqlite.execute(`
         CREATE TABLE IF NOT EXISTS chat_messages (
           id TEXT PRIMARY KEY,
           chat_session_id TEXT NOT NULL,
@@ -151,36 +152,36 @@ class DatabaseService {
       `);
 
       // Create indexes
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_downloads_start_time ON downloads(start_time)`,
       );
-      
+
       // Chat indexes
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(chat_session_id)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON chat_sessions(is_active)`,
       );
-      await rawDatabase.execute(
+      await sqlite.execute(
         `CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON chat_sessions(updated_at)`,
       );
     } catch (error) {
@@ -893,12 +894,15 @@ class DatabaseService {
   }
 
   // Chat Management Methods
-  async createChatSession(pageTitle: string, pageUrl?: string): Promise<string> {
+  async createChatSession(
+    pageTitle: string,
+    pageUrl?: string,
+  ): Promise<string> {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
       const sessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-      
+
       await database.insert(chatSessions).values({
         id: sessionId,
         title: pageTitle,
@@ -920,18 +924,25 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      const content = typeof message.content === 'string' 
-        ? message.content 
-        : JSON.stringify(message.content);
+      const content =
+        typeof message.content === "string"
+          ? message.content
+          : JSON.stringify(message.content);
 
       await database.insert(chatMessages).values({
         id: message.id,
         chatSessionId: sessionId,
         role: message.role,
         content,
-        toolInvocations: message.toolInvocations ? JSON.stringify(message.toolInvocations) : null,
-        attachments: message.experimental_attachments ? JSON.stringify(message.experimental_attachments) : null,
-        createdAt: message.createdAt ? message.createdAt.toISOString() : new Date().toISOString(),
+        toolInvocations: message.toolInvocations
+          ? JSON.stringify(message.toolInvocations)
+          : null,
+        attachments: message.experimental_attachments
+          ? JSON.stringify(message.experimental_attachments)
+          : null,
+        createdAt: message.createdAt
+          ? message.createdAt.toISOString()
+          : new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       });
 
@@ -940,14 +951,16 @@ class DatabaseService {
         .update(chatSessions)
         .set({ updatedAt: new Date().toISOString() })
         .where(eq(chatSessions.id, sessionId));
-
     } catch (error) {
       console.error("Failed to save chat message:", error);
       throw error;
     }
   }
 
-  async getChatMessages(sessionId: string, limit: number = 100): Promise<Message[]> {
+  async getChatMessages(
+    sessionId: string,
+    limit: number = 100,
+  ): Promise<Message[]> {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
@@ -1014,13 +1027,13 @@ class DatabaseService {
           updatedAt: chatSessions.updatedAt,
           isActive: chatSessions.isActive,
           messageCount: sql<number>`(
-            SELECT COUNT(*) FROM chat_messages 
+            SELECT COUNT(*) FROM chat_messages
             WHERE chat_session_id = chat_sessions.id
           )`,
           lastMessage: sql<string>`(
-            SELECT content FROM chat_messages 
-            WHERE chat_session_id = chat_sessions.id 
-            ORDER BY created_at DESC 
+            SELECT content FROM chat_messages
+            WHERE chat_session_id = chat_sessions.id
+            ORDER BY created_at DESC
             LIMIT 1
           )`,
         })
@@ -1051,8 +1064,10 @@ class DatabaseService {
 
     try {
       // Delete messages first (though CASCADE should handle this)
-      await database.delete(chatMessages).where(eq(chatMessages.chatSessionId, sessionId));
-      
+      await database
+        .delete(chatMessages)
+        .where(eq(chatMessages.chatSessionId, sessionId));
+
       // Delete session
       await database.delete(chatSessions).where(eq(chatSessions.id, sessionId));
     } catch (error) {
@@ -1065,8 +1080,10 @@ class DatabaseService {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
-      await database.delete(chatMessages).where(eq(chatMessages.chatSessionId, sessionId));
-      
+      await database
+        .delete(chatMessages)
+        .where(eq(chatMessages.chatSessionId, sessionId));
+
       // Update session timestamp
       await database
         .update(chatSessions)
@@ -1078,15 +1095,18 @@ class DatabaseService {
     }
   }
 
-  async updateChatSessionTitle(sessionId: string, title: string): Promise<void> {
+  async updateChatSessionTitle(
+    sessionId: string,
+    title: string,
+  ): Promise<void> {
     if (!this.initialized) throw new Error("Database not initialized");
 
     try {
       await database
         .update(chatSessions)
-        .set({ 
+        .set({
           title,
-          updatedAt: new Date().toISOString() 
+          updatedAt: new Date().toISOString(),
         })
         .where(eq(chatSessions.id, sessionId));
     } catch (error) {

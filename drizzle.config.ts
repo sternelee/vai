@@ -1,10 +1,13 @@
-import type { Config } from 'drizzle-kit';
+import type { Config } from "drizzle-kit";
 
 export default {
-  schema: './services/database/schema.ts',
-  out: './services/database/migrations',
-  dialect: 'sqlite',
+  schema: "./db/schema.ts",
+  out: "./db/migrations",
+  dialect: "turso",
+  casing: "snake_case",
   dbCredentials: {
-    url: 'vaibrowser.db',
+    url: process.env.EXPO_PUBLIC_TURSO_DATABASE_URL!,
+    authToken: process.env.EXPO_PUBLIC_TURSO_AUTH_TOKEN,
   },
-} satisfies Config; 
+} satisfies Config;
+
