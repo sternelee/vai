@@ -87,6 +87,11 @@ export default function BrowserWebView({
   };
 
   const formatUrl = (input: string): string => {
+    // Handle custom vai:// scheme
+    if (input.startsWith('vai://')) {
+      return input; // Keep vai:// URLs as-is for custom handling
+    }
+
     // If it's already a complete URL, return as is
     if (input.includes("://")) {
       return input;
@@ -99,6 +104,338 @@ export default function BrowserWebView({
 
     // Otherwise, treat as search query
     return `https://www.google.com/search?q=${encodeURIComponent(input)}`;
+  };
+
+  // Handle custom URL schemes
+  const handleCustomScheme = (url: string): boolean => {
+    if (url.startsWith('vai://')) {
+      const path = url.replace('vai://', '');
+      
+      switch (path) {
+        case 'home':
+          // Load home page content
+          loadHomePage();
+          return false; // Prevent default navigation
+        
+        case 'settings':
+          // Handle settings navigation
+          onMessage(tabId, { type: 'navigate_to_settings' });
+          return false;
+        
+        case 'bookmarks':
+          // Handle bookmarks navigation
+          onMessage(tabId, { type: 'navigate_to_bookmarks' });
+          return false;
+        
+        case 'history':
+          // Handle history navigation
+          onMessage(tabId, { type: 'navigate_to_history' });
+          return false;
+        
+        case 'downloads':
+          // Handle downloads navigation
+          onMessage(tabId, { type: 'navigate_to_downloads' });
+          return false;
+        
+        default:
+          // Handle unknown vai:// URLs
+          console.warn(`Unknown vai:// URL: ${url}`);
+          return false;
+      }
+    }
+    
+    return true; // Allow other URLs to proceed
+  };
+
+  // Load home page content
+  const loadHomePage = () => {
+    const homePageHTML = `
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>VaiBrowser - Home</title>
+        <style>
+          * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+          }
+          
+          body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+            background: ${isDark ? '#000000' : '#ffffff'};
+            color: ${isDark ? '#ffffff' : '#000000'};
+            min-height: 100vh;
+            padding: 20px;
+            background-image: ${isDark 
+              ? 'radial-gradient(circle at 25% 25%, #1a1a2e 0%, #000000 50%)' 
+              : 'radial-gradient(circle at 25% 25%, #f0f8ff 0%, #ffffff 50%)'
+            };
+          }
+          
+          .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 40px 0;
+          }
+          
+          .header {
+            text-align: center;
+            margin-bottom: 60px;
+          }
+          
+          .logo {
+            font-size: 48px;
+            font-weight: 700;
+            background: linear-gradient(45deg, #007AFF, #5AC8FA);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 20px;
+          }
+          
+          .subtitle {
+            font-size: 18px;
+            opacity: 0.7;
+            margin-bottom: 40px;
+          }
+          
+          .search-container {
+            position: relative;
+            margin-bottom: 60px;
+          }
+          
+          .search-input {
+            width: 100%;
+            padding: 16px 24px;
+            font-size: 16px;
+            border: 2px solid ${isDark ? '#2C2C2E' : '#E5E5EA'};
+            border-radius: 25px;
+            background: ${isDark ? '#1C1C1E' : '#F2F2F7'};
+            color: ${isDark ? '#ffffff' : '#000000'};
+            outline: none;
+            transition: all 0.3s ease;
+          }
+          
+          .search-input:focus {
+            border-color: #007AFF;
+            box-shadow: 0 0 0 4px rgba(0, 122, 255, 0.1);
+          }
+          
+          .quick-actions {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 20px;
+            margin-bottom: 60px;
+          }
+          
+          .action-card {
+            background: ${isDark ? '#1C1C1E' : '#F2F2F7'};
+            border: 1px solid ${isDark ? '#2C2C2E' : '#E5E5EA'};
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            color: inherit;
+          }
+          
+          .action-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 122, 255, 0.15);
+            border-color: #007AFF;
+          }
+          
+          .action-icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+            display: block;
+          }
+          
+          .action-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+          }
+          
+          .action-desc {
+            font-size: 14px;
+            opacity: 0.7;
+          }
+          
+          .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+          }
+          
+          .feature-card {
+            background: ${isDark ? '#1C1C1E' : '#F2F2F7'};
+            border: 1px solid ${isDark ? '#2C2C2E' : '#E5E5EA'};
+            border-radius: 12px;
+            padding: 16px;
+          }
+          
+          .feature-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #007AFF;
+          }
+          
+          .feature-desc {
+            font-size: 12px;
+            opacity: 0.7;
+          }
+          
+          @media (max-width: 480px) {
+            .container {
+              padding: 20px 0;
+            }
+            
+            .logo {
+              font-size: 36px;
+            }
+            
+            .subtitle {
+              font-size: 16px;
+            }
+            
+            .quick-actions {
+              grid-template-columns: repeat(2, 1fr);
+            }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="container">
+          <div class="header">
+            <div class="logo">VaiBrowser</div>
+            <div class="subtitle">Your AI-Powered Web Browser</div>
+          </div>
+          
+          <div class="search-container">
+            <input 
+              type="text" 
+              class="search-input" 
+              placeholder="Search the web or enter a URL..."
+              onkeypress="handleSearch(event)"
+              onfocus="this.select()"
+            />
+          </div>
+          
+          <div class="quick-actions">
+            <a href="#" class="action-card" onclick="navigateTo('vai://bookmarks')">
+              <span class="action-icon">📚</span>
+              <div class="action-title">Bookmarks</div>
+              <div class="action-desc">Saved pages</div>
+            </a>
+            
+            <a href="#" class="action-card" onclick="navigateTo('vai://history')">
+              <span class="action-icon">📖</span>
+              <div class="action-title">History</div>
+              <div class="action-desc">Recently visited</div>
+            </a>
+            
+            <a href="#" class="action-card" onclick="navigateTo('vai://downloads')">
+              <span class="action-icon">📥</span>
+              <div class="action-title">Downloads</div>
+              <div class="action-desc">Downloaded files</div>
+            </a>
+            
+            <a href="#" class="action-card" onclick="openAI()">
+              <span class="action-icon">✨</span>
+              <div class="action-title">AI Assistant</div>
+              <div class="action-desc">Chat with AI</div>
+            </a>
+          </div>
+          
+          <div class="features">
+            <div class="feature-card">
+              <div class="feature-title">🔒 Privacy First</div>
+              <div class="feature-desc">Built-in tracking protection and secure browsing</div>
+            </div>
+            
+            <div class="feature-card">
+              <div class="feature-title">🚀 Performance</div>
+              <div class="feature-desc">Optimized for speed and efficiency</div>
+            </div>
+            
+            <div class="feature-card">
+              <div class="feature-title">🤖 AI Integration</div>
+              <div class="feature-desc">Smart assistance for web browsing</div>
+            </div>
+            
+            <div class="feature-card">
+              <div class="feature-title">📱 Mobile Native</div>
+              <div class="feature-desc">Designed specifically for mobile devices</div>
+            </div>
+          </div>
+        </div>
+        
+        <script>
+          function handleSearch(event) {
+            if (event.key === 'Enter') {
+              const query = event.target.value.trim();
+              if (query) {
+                // Send search query to React Native
+                window.ReactNativeWebView.postMessage(JSON.stringify({
+                  type: 'search_request',
+                  query: query
+                }));
+              }
+            }
+          }
+          
+          function navigateTo(url) {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'navigate_request',
+              url: url
+            }));
+          }
+          
+          function openAI() {
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'ai_button_clicked',
+              pageContent: 'Home page',
+              pageTitle: 'VaiBrowser - Home',
+              pageUrl: 'vai://home'
+            }));
+          }
+          
+          // Auto-focus search input after a short delay
+          setTimeout(() => {
+            const searchInput = document.querySelector('.search-input');
+            if (searchInput) {
+              searchInput.focus();
+            }
+          }, 500);
+          
+          // Handle theme changes
+          window.addEventListener('message', function(event) {
+            try {
+              const data = JSON.parse(event.data);
+              if (data.type === 'theme_changed') {
+                location.reload();
+              }
+            } catch (error) {
+              console.error('Failed to parse message:', error);
+            }
+          });
+        </script>
+      </body>
+      </html>
+    `;
+
+    if (webViewRef.current) {
+      webViewRef.current.postMessage(JSON.stringify({
+        type: 'load_html',
+        html: homePageHTML,
+        baseUrl: 'vai://home'
+      }));
+    }
   };
 
   const handleNavigationStateChange = (navState: any) => {
@@ -146,11 +483,73 @@ export default function BrowserWebView({
         onScroll(tabId, data.scrollY);
       }
 
+      // Handle search requests from home page
+      if (data.type === 'search_request') {
+        const query = data.query;
+        const searchUrl = formatUrl(query);
+        if (webViewRef.current) {
+          webViewRef.current.postMessage(JSON.stringify({
+            type: 'navigate',
+            url: searchUrl,
+          }));
+        }
+        return;
+      }
+
+      // Handle navigation requests from home page
+      if (data.type === 'navigate_request') {
+        const url = data.url;
+        if (handleCustomScheme(url) === false) {
+          // Custom scheme was handled, don't navigate
+          return;
+        }
+        // Navigate to regular URL
+        if (webViewRef.current) {
+          webViewRef.current.postMessage(JSON.stringify({
+            type: 'navigate',
+            url: url,
+          }));
+        }
+        return;
+      }
+
+      // Handle HTML loading requests
+      if (data.type === 'load_html') {
+        if (webViewRef.current) {
+          // Use postMessage to load HTML content
+          webViewRef.current.injectJavaScript(`
+            document.open();
+            document.write(\`${data.html.replace(/`/g, '\\`')}\`);
+            document.close();
+            
+            // Update the URL in the address bar
+            history.replaceState(null, '', '${data.baseUrl}');
+            
+            // Notify about successful load
+            window.ReactNativeWebView.postMessage(JSON.stringify({
+              type: 'home_page_loaded',
+              url: '${data.baseUrl}',
+              title: 'VaiBrowser - Home'
+            }));
+            
+            true;
+          `);
+        }
+        return;
+      }
+
       onMessage(tabId, data);
     } catch (error) {
       console.error("Failed to parse WebView message:", error);
     }
   };
+
+  // Handle initial load for vai:// URLs
+  useEffect(() => {
+    if (initialUrl.startsWith('vai://')) {
+      handleCustomScheme(initialUrl);
+    }
+  }, [initialUrl]);
 
   // Inject user scripts for current URL
   const injectUserScripts = async (url: string) => {
@@ -417,7 +816,7 @@ export default function BrowserWebView({
     <View style={[styles.container, { display: isActive ? "flex" : "none" }]}>
       <WebView
         ref={webViewRef}
-        source={{ uri: currentUrl }}
+        source={{ uri: initialUrl.startsWith('vai://') ? 'about:blank' : currentUrl }}
         style={styles.webview}
         onNavigationStateChange={handleNavigationStateChange}
         onLoadStart={handleLoadStart}
@@ -463,8 +862,12 @@ export default function BrowserWebView({
           </View>
         )}
         onShouldStartLoadWithRequest={(request) => {
-          // Allow all requests by default
-          // Add custom logic here if needed
+          // Handle custom vai:// schemes
+          if (request.url.startsWith('vai://')) {
+            return handleCustomScheme(request.url);
+          }
+          
+          // Allow all other requests
           return true;
         }}
         onContentProcessDidTerminate={() => {

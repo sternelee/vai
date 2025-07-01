@@ -63,6 +63,29 @@ export const userScripts = sqliteTable('user_scripts', {
   createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
 });
 
+// Chat Messages table - compatible with @ai-sdk/react Message structure
+export const chatMessages = sqliteTable('chat_messages', {
+  id: text('id').primaryKey(),
+  chatSessionId: text('chat_session_id').notNull(),
+  role: text('role', { enum: ['user', 'assistant', 'system', 'tool'] }).notNull(),
+  content: text('content').notNull(), // JSON string for complex content
+  toolInvocations: text('tool_invocations'), // JSON string array for tool calls
+  attachments: text('attachments'), // JSON string array for experimental_attachments
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+});
+
+// Chat Sessions table for organizing conversations
+export const chatSessions = sqliteTable('chat_sessions', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  pageUrl: text('page_url'),
+  pageTitle: text('page_title'),
+  createdAt: text('created_at').default(sql`CURRENT_TIMESTAMP`),
+  updatedAt: text('updated_at').default(sql`CURRENT_TIMESTAMP`),
+  isActive: integer('is_active', { mode: 'boolean' }).default(true),
+});
+
 // Export types
 export type HistoryItem = typeof history.$inferSelect;
 export type NewHistoryItem = typeof history.$inferInsert;
@@ -74,4 +97,10 @@ export type DownloadItem = typeof downloads.$inferSelect;
 export type NewDownloadItem = typeof downloads.$inferInsert;
 
 export type UserScriptItem = typeof userScripts.$inferSelect;
-export type NewUserScriptItem = typeof userScripts.$inferInsert; 
+export type NewUserScriptItem = typeof userScripts.$inferInsert;
+
+export type ChatMessage = typeof chatMessages.$inferSelect;
+export type NewChatMessage = typeof chatMessages.$inferInsert;
+
+export type ChatSession = typeof chatSessions.$inferSelect;
+export type NewChatSession = typeof chatSessions.$inferInsert; 

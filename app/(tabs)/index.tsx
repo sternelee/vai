@@ -887,6 +887,45 @@ export default function BrowserScreen() {
         console.log('Page content extracted:', message.content);
         break;
 
+      // Handle custom scheme navigation
+      case 'navigate_to_settings':
+        // Navigate to settings - you can implement this based on your navigation structure
+        console.log('Navigate to settings requested');
+        Alert.alert('Settings', 'Settings navigation not yet implemented');
+        break;
+
+      case 'navigate_to_bookmarks':
+        setBookmarksVisible(true);
+        break;
+
+      case 'navigate_to_history':
+        if (currentTab?.isIncognito) {
+          Alert.alert(
+            'Incognito Mode',
+            'History is not available in incognito mode.',
+            [{ text: 'OK' }]
+          );
+        } else {
+          setHistoryVisible(true);
+        }
+        break;
+
+      case 'navigate_to_downloads':
+        setDownloadManagerVisible(true);
+        break;
+
+      case 'home_page_loaded':
+        // Update tab information when home page loads
+        if (message.url && message.title) {
+          updateTab(tabId, {
+            url: message.url,
+            title: message.title,
+            isLoading: false,
+            progress: 1,
+          });
+        }
+        break;
+
       case 'resources_extracted':
         // 处理从WebView接收到的资源数据
         handleResourcesExtracted(message.resources);
@@ -1431,8 +1470,6 @@ export default function BrowserScreen() {
         currentPageContent={currentPageContent}
         selectedText={selectedText}
         onSendMessage={handleSendAIMessage}
-        messages={aiMessages}
-        onClearHistory={handleClearAIHistory}
         aiConfigured={aiConfigured}
         onConfigureAI={handleConfigureAI}
       />

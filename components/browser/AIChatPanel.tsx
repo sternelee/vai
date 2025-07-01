@@ -2,26 +2,21 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import Modal from "react-native-modal";
-
-interface ChatMessage {
-  id: string;
-  role: "user" | "assistant";
-  content: string;
-  timestamp: number;
-  isStreaming?: boolean;
-}
+import DatabaseService from "../../services/DatabaseService";
+import type { Message } from "../../types/chat";
 
 interface AIChatPanelProps {
   isVisible: boolean;
@@ -34,8 +29,6 @@ interface AIChatPanelProps {
     message: string,
     context: string,
   ) => Promise<ReadableStream<string>>;
-  messages: ChatMessage[];
-  onClearHistory: () => void;
   aiConfigured: boolean;
   onConfigureAI: () => void;
 }
@@ -48,21 +41,26 @@ export default function AIChatPanel({
   currentPageContent,
   selectedText,
   onSendMessage,
-  messages,
-  onClearHistory,
   aiConfigured,
   onConfigureAI,
 }: AIChatPanelProps) {
   const [inputText, setInputText] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null,
-  );
+  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const colorScheme = useColorScheme();
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
   const isDark = colorScheme === "dark";
+
+  // Initialize or load chat session
+  useEffect(() => {
+    if (isVisible && !currentSessionId) {
+      initializeChatSession();
+    }
+  }, [isVisible, currentPageUrl]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -78,13 +76,37 @@ export default function AIChatPanel({
     if (selectedText && isVisible) {
       setInputText(`Can you explain this text: "${selectedText}"`);
     } else if (isVisible && !selectedText && currentPageContent) {
-      // 如果没有选中文本但有页面内容，则预填充页面分析提示
-      setInputText(`Please analyze this page: ${currentPageTitle || currentPageUrl}`);
+      setInputText(
+        `Please analyze this page: ${currentPageTitle || currentPageUrl}`,
+      );
     }
-  }, [selectedText, isVisible, currentPageContent, currentPageTitle, currentPageUrl]);
+  }, [
+    selectedText,
+    isVisible,
+    currentPageContent,
+    currentPageTitle,
+    currentPageUrl,
+  ]);
+
+  const initializeChatSession = async () => {
+    try {
+      // Create new session for current page
+      const sessionId = await DatabaseService.createChatSession(
+        currentPageTitle || "Web Page Chat", 
+        currentPageUrl
+      );
+      setCurrentSessionId(sessionId);
+      
+      // Load existing messages for this session
+      const existingMessages = await DatabaseService.getChatMessages(sessionId);
+      setMessages(existingMessages);
+    } catch (error) {
+      console.error("Failed to initialize chat session:", error);
+    }
+  };
 
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading) return;
+    if (!inputText.trim() || isLoading || !currentSessionId) return;
 
     if (!aiConfigured) {
       Alert.alert(
@@ -103,6 +125,18 @@ export default function AIChatPanel({
     setIsLoading(true);
 
     try {
+      // Create user message
+      const userMessage: Message = {
+        id: `user_${Date.now()}`,
+        role: "user",
+        content: messageText,
+        createdAt: new Date(),
+      };
+
+      // Add user message to state and database
+      setMessages(prev => [...prev, userMessage]);
+      await DatabaseService.saveChatMessage(userMessage, currentSessionId);
+
       // Create context from current page
       const context = `
         Current page: ${currentPageTitle}
@@ -110,12 +144,19 @@ export default function AIChatPanel({
         Content preview: ${currentPageContent.substring(0, 2000)}
       `;
 
+      // Create assistant message for streaming
+      const assistantMessage: Message = {
+        id: `assistant_${Date.now()}`,
+        role: "assistant",
+        content: "",
+        createdAt: new Date(),
+      };
+
+      setMessages(prev => [...prev, assistantMessage]);
+      setStreamingMessageId(assistantMessage.id);
+
       // Get response stream
       const responseStream = await onSendMessage(messageText, context);
-      const streamingId = Date.now().toString();
-      setStreamingMessageId(streamingId);
-
-      // Read the stream
       const reader = responseStream.getReader();
       let accumulatedResponse = "";
 
@@ -127,9 +168,22 @@ export default function AIChatPanel({
           accumulatedResponse += value;
 
           // Update the streaming message
-          // This would need to be handled by the parent component
-          // to update the messages array with the streaming content
+          setMessages(prev => 
+            prev.map(msg => 
+              msg.id === assistantMessage.id 
+                ? { ...msg, content: accumulatedResponse }
+                : msg
+            )
+          );
         }
+
+        // Save final assistant message to database
+        const finalAssistantMessage: Message = {
+          ...assistantMessage,
+          content: accumulatedResponse,
+        };
+        await DatabaseService.saveChatMessage(finalAssistantMessage, currentSessionId);
+
       } finally {
         reader.releaseLock();
         setStreamingMessageId(null);
@@ -139,6 +193,17 @@ export default function AIChatPanel({
       Alert.alert("Error", "Failed to send message. Please try again.");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleClearHistory = async () => {
+    if (!currentSessionId) return;
+    
+    try {
+      await DatabaseService.clearChatHistory(currentSessionId);
+      setMessages([]);
+    } catch (error) {
+      console.error("Failed to clear chat history:", error);
     }
   };
 
@@ -177,55 +242,138 @@ export default function AIChatPanel({
     }, 100);
   };
 
-  const formatTimestamp = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const formatTimestamp = (timestamp: Date) => {
+    return timestamp.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
   };
 
-  const renderMessage = ({ item }: { item: ChatMessage }) => (
-    <View
-      style={[
-        styles.messageContainer,
-        item.role === "user" ? styles.userMessage : styles.assistantMessage,
-      ]}
-    >
+  const renderMarkdownContent = (content: string) => {
+    const markdownStyles = {
+      body: {
+        color: isDark ? "#FFFFFF" : "#000000",
+        fontSize: 16,
+        lineHeight: 22,
+      },
+      code_inline: {
+        backgroundColor: isDark ? "#3A3A3C" : "#F2F2F7",
+        color: isDark ? "#FF6B6B" : "#FF3B30",
+        paddingHorizontal: 4,
+        paddingVertical: 2,
+        borderRadius: 4,
+        fontSize: 14,
+      },
+      code_block: {
+        backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+        color: isDark ? "#FFFFFF" : "#000000",
+        padding: 12,
+        borderRadius: 8,
+        fontSize: 14,
+        fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      },
+      fence: {
+        backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+        color: isDark ? "#FFFFFF" : "#000000",
+        padding: 12,
+        borderRadius: 8,
+        fontSize: 14,
+        fontFamily: Platform.OS === "ios" ? "Menlo" : "monospace",
+      },
+      link: {
+        color: "#007AFF",
+        textDecorationLine: "underline" as const,
+      },
+      blockquote: {
+        backgroundColor: isDark ? "#3A3A3C" : "#F2F2F7",
+        borderLeftWidth: 4,
+        borderLeftColor: "#007AFF",
+        paddingLeft: 12,
+        paddingVertical: 8,
+        marginVertical: 8,
+      },
+      heading1: {
+        color: isDark ? "#FFFFFF" : "#000000",
+        fontSize: 24,
+        fontWeight: "bold",
+        marginVertical: 8,
+      },
+      heading2: {
+        color: isDark ? "#FFFFFF" : "#000000",
+        fontSize: 20,
+        fontWeight: "bold",
+        marginVertical: 6,
+      },
+      heading3: {
+        color: isDark ? "#FFFFFF" : "#000000",
+        fontSize: 18,
+        fontWeight: "bold",
+        marginVertical: 4,
+      },
+      list_item: {
+        color: isDark ? "#FFFFFF" : "#000000",
+        marginVertical: 2,
+      },
+      ordered_list_icon: {
+        color: isDark ? "#8E8E93" : "#6B6B6B",
+      },
+      bullet_list_icon: {
+        color: isDark ? "#8E8E93" : "#6B6B6B",
+      },
+    };
+
+    return (
+      <Markdown style={markdownStyles}>
+        {content}
+      </Markdown>
+    );
+  };
+
+  const renderMessage = ({ item }: { item: Message }) => {
+    const content = typeof item.content === 'string' ? item.content : JSON.stringify(item.content);
+    const isStreaming = streamingMessageId === item.id;
+
+    return (
       <View
         style={[
-          styles.messageBubble,
-          {
-            backgroundColor:
-              item.role === "user" ? "#007AFF" : isDark ? "#2C2C2E" : "#F2F2F7",
-          },
+          styles.messageContainer,
+          item.role === "user" ? styles.userMessage : styles.assistantMessage,
         ]}
       >
-        <Text
+        <View
           style={[
-            styles.messageText,
+            styles.messageBubble,
             {
-              color:
-                item.role === "user"
-                  ? "#FFFFFF"
-                  : isDark
-                    ? "#FFFFFF"
-                    : "#000000",
+              backgroundColor:
+                item.role === "user" ? "#007AFF" : isDark ? "#2C2C2E" : "#F2F2F7",
             },
           ]}
         >
-          {item.content}
+          {item.role === "user" ? (
+            <Text
+              style={[
+                styles.messageText,
+                { color: "#FFFFFF" },
+              ]}
+            >
+              {content}
+            </Text>
+          ) : (
+            <View style={styles.markdownContainer}>
+              {renderMarkdownContent(content)}
+            </View>
+          )}
+          {isStreaming && (
+            <View style={styles.streamingIndicator}>
+              <ActivityIndicator size="small" color="#007AFF" />
+            </View>
+          )}
+        </View>
+        <Text
+          style={[styles.timestamp, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
+        >
+          {formatTimestamp(item.createdAt || new Date())}
         </Text>
-        {item.isStreaming && (
-          <View style={styles.streamingIndicator}>
-            <ActivityIndicator size="small" color="#007AFF" />
-          </View>
-        )}
       </View>
-      <Text
-        style={[styles.timestamp, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
-      >
-        {formatTimestamp(item.timestamp)}
-      </Text>
-    </View>
-  );
+    );
+  };
 
   const renderQuickActions = () => (
     <View style={styles.quickActionsContainer}>
@@ -308,7 +456,7 @@ export default function AIChatPanel({
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={onClearHistory}
+                onPress={handleClearHistory}
                 disabled={messages.length === 0}
               >
                 <Ionicons
@@ -513,6 +661,9 @@ const styles = StyleSheet.create({
   messageText: {
     fontSize: 16,
     lineHeight: 22,
+  },
+  markdownContainer: {
+    flex: 1,
   },
   streamingIndicator: {
     marginTop: 8,

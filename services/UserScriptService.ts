@@ -370,7 +370,7 @@ class UserScriptService {
     let inMetadataBlock = false;
 
     for (const line of lines) {
-      const trimmed = line.trim();
+      const trimmed = line.trim() || "";
 
       if (trimmed === "// ==UserScript==") {
         inMetadataBlock = true;
@@ -664,4 +664,3 @@ class UserScriptService {
 
 // Export singleton instance
 export const userScriptService = new UserScriptService();
-

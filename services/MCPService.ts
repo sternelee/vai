@@ -1,8 +1,8 @@
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // MCP Protocol Types
 export interface MCPMessage {
-  jsonrpc: '2.0';
+  jsonrpc: "2.0";
   id?: string | number;
   method?: string;
   params?: any;
@@ -18,7 +18,7 @@ export interface MCPTool {
   name: string;
   description: string;
   inputSchema: {
-    type: 'object';
+    type: "object";
     properties: Record<string, any>;
     required?: string[];
   };
@@ -51,7 +51,7 @@ export interface MCPServer {
   tools?: MCPTool[];
   resources?: MCPResource[];
   prompts?: MCPPrompt[];
-  status: 'connected' | 'disconnected' | 'connecting' | 'error';
+  status: "connected" | "disconnected" | "connecting" | "error";
   lastConnected?: string;
   error?: string;
   capabilities?: {
@@ -76,11 +76,14 @@ class MCPClient {
   private headers: Record<string, string>;
   private eventSource: EventSource | null = null;
   private messageId = 0;
-  private pendingRequests = new Map<string | number, {
-    resolve: (value: any) => void;
-    reject: (error: any) => void;
-    timeout: number;
-  }>();
+  private pendingRequests = new Map<
+    string | number,
+    {
+      resolve: (value: any) => void;
+      reject: (error: any) => void;
+      timeout: number;
+    }
+  >();
   private isConnected = false;
   private capabilities: any = {};
   private tools: MCPTool[] = [];
@@ -106,14 +109,19 @@ class MCPClient {
 
         // Add headers as query parameters if needed (workaround for EventSource limitations)
         Object.entries(this.headers).forEach(([key, value]) => {
-          if (key.toLowerCase() === 'authorization') {
-            eventSourceUrl.searchParams.set('auth', value.replace('Bearer ', ''));
+          if (key.toLowerCase() === "authorization") {
+            eventSourceUrl.searchParams.set(
+              "auth",
+              value.replace("Bearer ", ""),
+            );
           }
         });
 
         // Check if EventSource is available (might not be in all React Native environments)
-        if (typeof EventSource === 'undefined') {
-          throw new Error('EventSource not available - consider using WebSocket fallback');
+        if (typeof EventSource === "undefined") {
+          throw new Error(
+            "EventSource not available - consider using WebSocket fallback",
+          );
         }
 
         this.eventSource = new EventSource(eventSourceUrl.toString());
@@ -128,64 +136,65 @@ class MCPClient {
 
         this.eventSource.onmessage = (event) => {
           try {
-            console.log(`📨 Received MCP message: ${event.data.substring(0, 200)}...`);
+            console.log(
+              `📨 Received MCP message: ${event.data.substring(0, 200)}...`,
+            );
             const message: MCPMessage = JSON.parse(event.data);
             this.handleMessage(message);
           } catch (error) {
-            console.error('❌ Failed to parse MCP message:', error);
+            console.error("❌ Failed to parse MCP message:", error);
           }
         };
 
         this.eventSource.onerror = (error) => {
-          console.error('🚫 MCP EventSource error:', error);
+          console.error("🚫 MCP EventSource error:", error);
           this.isConnected = false;
 
           // Clean up pending requests
           this.pendingRequests.forEach(({ reject, timeout }) => {
             clearTimeout(timeout);
-            reject(new Error('Connection lost'));
+            reject(new Error("Connection lost"));
           });
           this.pendingRequests.clear();
 
           if (this.eventSource?.readyState === EventSource.CLOSED) {
-            reject(new Error('Connection failed'));
+            reject(new Error("Connection failed"));
           }
         };
 
         // Connection timeout
         setTimeout(() => {
           if (!this.isConnected) {
-            console.log('⏰ Connection timeout');
+            console.log("⏰ Connection timeout");
             this.close();
-            reject(new Error('Connection timeout'));
+            reject(new Error("Connection timeout"));
           }
         }, 10000);
-
       } catch (error) {
-        console.error('🔥 Connection error:', error);
+        console.error("🔥 Connection error:", error);
         reject(error);
       }
     });
   }
 
   private async initialize(): Promise<void> {
-    const response = await this.sendRequest('initialize', {
-      protocolVersion: '2024-11-05',
+    const response = await this.sendRequest("initialize", {
+      protocolVersion: "2024-11-05",
       capabilities: {
         tools: {},
         resources: {},
         prompts: {},
       },
       clientInfo: {
-        name: 'VaiBrowser',
-        version: '1.0.0',
+        name: "VaiBrowser",
+        version: "1.0.0",
       },
     });
 
     this.capabilities = response.capabilities || {};
 
     // Send initialized notification
-    this.sendNotification('notifications/initialized', {});
+    this.sendNotification("notifications/initialized", {});
 
     // Discover available tools, resources, and prompts
     await this.discoverCapabilities();
@@ -195,23 +204,23 @@ class MCPClient {
     try {
       // Discover tools
       if (this.capabilities.tools) {
-        const toolsResponse = await this.sendRequest('tools/list', {});
+        const toolsResponse = await this.sendRequest("tools/list", {});
         this.tools = toolsResponse.tools || [];
       }
 
       // Discover resources
       if (this.capabilities.resources) {
-        const resourcesResponse = await this.sendRequest('resources/list', {});
+        const resourcesResponse = await this.sendRequest("resources/list", {});
         this.resources = resourcesResponse.resources || [];
       }
 
       // Discover prompts
       if (this.capabilities.prompts) {
-        const promptsResponse = await this.sendRequest('prompts/list', {});
+        const promptsResponse = await this.sendRequest("prompts/list", {});
         this.prompts = promptsResponse.prompts || [];
       }
     } catch (error) {
-      console.error('Failed to discover MCP capabilities:', error);
+      console.error("Failed to discover MCP capabilities:", error);
     }
   }
 
@@ -224,7 +233,11 @@ class MCPClient {
         this.pendingRequests.delete(message.id);
 
         if (message.error) {
-          pending.reject(new Error(`MCP Error ${message.error.code}: ${message.error.message}`));
+          pending.reject(
+            new Error(
+              `MCP Error ${message.error.code}: ${message.error.message}`,
+            ),
+          );
         } else {
           pending.resolve(message.result);
         }
@@ -237,36 +250,36 @@ class MCPClient {
 
   private handleServerMessage(message: MCPMessage): void {
     switch (message.method) {
-      case 'notifications/tools/list_changed':
+      case "notifications/tools/list_changed":
         // Refresh tools list
         this.discoverCapabilities();
         break;
 
-      case 'notifications/resources/list_changed':
+      case "notifications/resources/list_changed":
         // Refresh resources list
         this.discoverCapabilities();
         break;
 
-      case 'notifications/prompts/list_changed':
+      case "notifications/prompts/list_changed":
         // Refresh prompts list
         this.discoverCapabilities();
         break;
 
       default:
-        console.log('Unhandled server message:', message.method);
+        console.log("Unhandled server message:", message.method);
     }
   }
 
   private sendRequest(method: string, params: any): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.isConnected || !this.eventSource) {
-        reject(new Error('Not connected to MCP server'));
+        reject(new Error("Not connected to MCP server"));
         return;
       }
 
       const id = ++this.messageId;
       const message: MCPMessage = {
-        jsonrpc: '2.0',
+        jsonrpc: "2.0",
         id,
         method,
         params,
@@ -275,7 +288,7 @@ class MCPClient {
       // Set up timeout
       const timeout = setTimeout(() => {
         this.pendingRequests.delete(id);
-        reject(new Error('Request timeout'));
+        reject(new Error("Request timeout"));
       }, 30000);
 
       this.pendingRequests.set(id, { resolve, reject, timeout });
@@ -291,7 +304,7 @@ class MCPClient {
 
   private sendNotification(method: string, params: any): void {
     const message: MCPMessage = {
-      jsonrpc: '2.0',
+      jsonrpc: "2.0",
       method,
       params,
     };
@@ -301,10 +314,10 @@ class MCPClient {
 
   private async sendHttpRequest(message: MCPMessage): Promise<void> {
     try {
-      const response = await fetch(this.url.replace('/sse', '/rpc'), {
-        method: 'POST',
+      const response = await fetch(this.url.replace("/sse", "/rpc"), {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
           ...this.headers,
         },
         body: JSON.stringify(message),
@@ -314,7 +327,7 @@ class MCPClient {
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
     } catch (error) {
-      console.error('Failed to send MCP request:', error);
+      console.error("Failed to send MCP request:", error);
       throw error;
     }
   }
@@ -329,10 +342,10 @@ class MCPClient {
 
   async callTool(name: string, arguments_: any): Promise<any> {
     if (!this.capabilities.tools) {
-      throw new Error('Tools not supported by this server');
+      throw new Error("Tools not supported by this server");
     }
 
-    const response = await this.sendRequest('tools/call', {
+    const response = await this.sendRequest("tools/call", {
       name,
       arguments: arguments_,
     });
@@ -349,10 +362,10 @@ class MCPClient {
 
   async readResource(uri: string): Promise<any> {
     if (!this.capabilities.resources) {
-      throw new Error('Resources not supported by this server');
+      throw new Error("Resources not supported by this server");
     }
 
-    const response = await this.sendRequest('resources/read', { uri });
+    const response = await this.sendRequest("resources/read", { uri });
     return response.contents || response.content;
   }
 
@@ -365,10 +378,10 @@ class MCPClient {
 
   async getPrompt(name: string, arguments_?: any): Promise<any> {
     if (!this.capabilities.prompts) {
-      throw new Error('Prompts not supported by this server');
+      throw new Error("Prompts not supported by this server");
     }
 
-    const response = await this.sendRequest('prompts/get', {
+    const response = await this.sendRequest("prompts/get", {
       name,
       arguments: arguments_ || {},
     });
@@ -393,9 +406,9 @@ class MCPClient {
       if (this.isConnected) {
         try {
           // Send a simple ping to check connection health
-          await this.sendRequest('ping', {});
+          await this.sendRequest("ping", {});
         } catch (error) {
-          console.warn('🏥 Health check failed, attempting reconnection...');
+          console.warn("🏥 Health check failed, attempting reconnection...");
           this.attemptReconnection();
         }
       }
@@ -404,21 +417,28 @@ class MCPClient {
 
   private async attemptReconnection(): Promise<void> {
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('💀 Max reconnection attempts reached');
+      console.error("💀 Max reconnection attempts reached");
       return;
     }
 
     this.reconnectAttempts++;
-    console.log(`🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`);
+    console.log(
+      `🔄 Reconnection attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts}`,
+    );
 
-    await new Promise(resolve => setTimeout(resolve, this.reconnectDelay * this.reconnectAttempts));
+    await new Promise((resolve) =>
+      setTimeout(resolve, this.reconnectDelay * this.reconnectAttempts),
+    );
 
     try {
       await this.connect();
       this.reconnectAttempts = 0; // Reset on successful connection
-      console.log('🎉 Successfully reconnected to MCP server');
+      console.log("🎉 Successfully reconnected to MCP server");
     } catch (error) {
-      console.error(`❌ Reconnection attempt ${this.reconnectAttempts} failed:`, error);
+      console.error(
+        `❌ Reconnection attempt ${this.reconnectAttempts} failed:`,
+        error,
+      );
       this.attemptReconnection(); // Try again
     }
   }
@@ -439,7 +459,7 @@ class MCPClient {
     // Clean up pending requests
     this.pendingRequests.forEach(({ reject, timeout }) => {
       clearTimeout(timeout);
-      reject(new Error('Connection closed'));
+      reject(new Error("Connection closed"));
     });
     this.pendingRequests.clear();
 
@@ -496,21 +516,21 @@ class MCPService {
   async initialize(): Promise<void> {
     try {
       await this.loadServers();
-      console.log('MCP Service initialized with real protocol support');
+      console.log("MCP Service initialized with real protocol support");
     } catch (error) {
-      console.error('Failed to initialize MCP Service:', error);
+      console.error("Failed to initialize MCP Service:", error);
     }
   }
 
   // Server Management
   async loadServers(): Promise<void> {
     try {
-      const savedServers = await AsyncStorage.getItem('@mcp_servers');
+      const savedServers = await AsyncStorage.getItem("@mcp_servers");
       if (savedServers) {
         this.servers = JSON.parse(savedServers);
-        
+
         // Auto-connect enabled servers
-        for (const server of this.servers.filter(s => s.enabled)) {
+        for (const server of this.servers.filter((s) => s.enabled)) {
           this.connectToServer(server.id);
         }
       } else {
@@ -519,67 +539,67 @@ class MCPService {
         await this.saveServers();
       }
     } catch (error) {
-      console.error('Failed to load MCP servers:', error);
+      console.error("Failed to load MCP servers:", error);
     }
   }
 
   private getDefaultServers(): MCPServer[] {
     return [
       {
-        id: 'filesystem-server',
-        name: 'File System MCP Server',
-        description: 'Access and manage local file system',
-        url: 'http://localhost:3001/sse',
+        id: "filesystem-server",
+        name: "File System MCP Server",
+        description: "Access and manage local file system",
+        url: "http://localhost:3001/sse",
         enabled: false,
-        status: 'disconnected',
+        status: "disconnected",
         tools: [],
         resources: [],
         prompts: [],
       },
       {
-        id: 'web-search-server',
-        name: 'Web Search MCP Server',
-        description: 'Search the web and get page content',
-        url: 'http://localhost:3002/sse',
+        id: "web-search-server",
+        name: "Web Search MCP Server",
+        description: "Search the web and get page content",
+        url: "http://localhost:3002/sse",
         enabled: false,
-        status: 'disconnected',
+        status: "disconnected",
         tools: [],
         resources: [],
         prompts: [],
       },
       {
-        id: 'database-server',
-        name: 'Database MCP Server',
-        description: 'Query and manage databases',
-        url: 'http://localhost:3003/sse',
+        id: "database-server",
+        name: "Database MCP Server",
+        description: "Query and manage databases",
+        url: "http://localhost:3003/sse",
         enabled: false,
-        status: 'disconnected',
+        status: "disconnected",
         tools: [],
         resources: [],
         prompts: [],
         headers: {
-          'Authorization': 'Bearer YOUR_API_KEY'
-        }
-      }
+          Authorization: "Bearer YOUR_API_KEY",
+        },
+      },
     ];
   }
 
   async saveServers(): Promise<void> {
     try {
-      await AsyncStorage.setItem('@mcp_servers', JSON.stringify(this.servers));
+      await AsyncStorage.setItem("@mcp_servers", JSON.stringify(this.servers));
       this.notifyListeners();
     } catch (error) {
-      console.error('Failed to save MCP servers:', error);
+      console.error("Failed to save MCP servers:", error);
     }
   }
 
   // Server Connection Management
   async connectToServer(serverId: string): Promise<boolean> {
-    const server = this.servers.find(s => s.id === serverId);
+    const server = this.servers.find((s) => s.id === serverId);
     if (!server) return false;
 
     try {
-      this.updateServerStatus(serverId, 'connecting');
+      this.updateServerStatus(serverId, "connecting");
 
       const mcpClient = new MCPClient({
         url: server.url,
@@ -596,10 +616,10 @@ class MCPService {
 
       // Store client and update server
       this.clients.set(serverId, mcpClient);
-      
+
       const updatedServer = {
         ...server,
-        status: 'connected' as const,
+        status: "connected" as const,
         tools,
         resources,
         prompts,
@@ -607,23 +627,24 @@ class MCPService {
         lastConnected: new Date().toISOString(),
         error: undefined,
       };
-      
+
       this.updateServer(serverId, updatedServer);
-      
+
       console.log(`Connected to MCP server: ${server.name}`);
-      console.log(`Available tools: ${tools.length}, resources: ${resources.length}, prompts: ${prompts.length}`);
+      console.log(
+        `Available tools: ${tools.length}, resources: ${resources.length}, prompts: ${prompts.length}`,
+      );
 
       return true;
-
     } catch (error) {
       console.error(`Failed to connect to MCP server ${server.name}:`, error);
-      
+
       this.updateServer(serverId, {
         ...server,
-        status: 'error',
+        status: "error",
         error: `Connection failed: ${error}`,
       });
-      
+
       return false;
     }
   }
@@ -634,10 +655,13 @@ class MCPService {
       try {
         await client.close();
         this.clients.delete(serverId);
-        this.updateServerStatus(serverId, 'disconnected');
+        this.updateServerStatus(serverId, "disconnected");
         console.log(`Disconnected from MCP server: ${serverId}`);
       } catch (error) {
-        console.error(`Failed to disconnect from MCP server ${serverId}:`, error);
+        console.error(
+          `Failed to disconnect from MCP server ${serverId}:`,
+          error,
+        );
       }
     }
   }
@@ -646,7 +670,7 @@ class MCPService {
   async addServer(config: MCPServerConfig): Promise<void> {
     const newServer: MCPServer = {
       ...config,
-      status: 'disconnected',
+      status: "disconnected",
       tools: [],
       resources: [],
       prompts: [],
@@ -660,8 +684,11 @@ class MCPService {
     }
   }
 
-  async updateServer(serverId: string, updates: Partial<MCPServer>): Promise<void> {
-    const index = this.servers.findIndex(s => s.id === serverId);
+  async updateServer(
+    serverId: string,
+    updates: Partial<MCPServer>,
+  ): Promise<void> {
+    const index = this.servers.findIndex((s) => s.id === serverId);
     if (index !== -1) {
       this.servers[index] = { ...this.servers[index], ...updates };
       await this.saveServers();
@@ -670,12 +697,12 @@ class MCPService {
 
   async removeServer(serverId: string): Promise<void> {
     await this.disconnectFromServer(serverId);
-    this.servers = this.servers.filter(s => s.id !== serverId);
+    this.servers = this.servers.filter((s) => s.id !== serverId);
     await this.saveServers();
   }
 
   async toggleServer(serverId: string): Promise<void> {
-    const server = this.servers.find(s => s.id === serverId);
+    const server = this.servers.find((s) => s.id === serverId);
     if (!server) return;
 
     if (server.enabled) {
@@ -687,8 +714,11 @@ class MCPService {
     }
   }
 
-  private updateServerStatus(serverId: string, status: MCPServer['status']): void {
-    const index = this.servers.findIndex(s => s.id === serverId);
+  private updateServerStatus(
+    serverId: string,
+    status: MCPServer["status"],
+  ): void {
+    const index = this.servers.findIndex((s) => s.id === serverId);
     if (index !== -1) {
       this.servers[index].status = status;
       this.notifyListeners();
@@ -696,7 +726,11 @@ class MCPService {
   }
 
   // Tool Management and Execution
-  async callTool(serverId: string, toolName: string, arguments_: any): Promise<any> {
+  async callTool(
+    serverId: string,
+    toolName: string,
+    arguments_: any,
+  ): Promise<any> {
     const client = this.clients.get(serverId);
     if (!client) {
       throw new Error(`No connection to server ${serverId}`);
@@ -726,7 +760,11 @@ class MCPService {
   }
 
   // Prompt Management
-  async getPrompt(serverId: string, promptName: string, arguments_?: any): Promise<any> {
+  async getPrompt(
+    serverId: string,
+    promptName: string,
+    arguments_?: any,
+  ): Promise<any> {
     const client = this.clients.get(serverId);
     if (!client) {
       throw new Error(`No connection to server ${serverId}`);
@@ -745,13 +783,15 @@ class MCPService {
     const allTools: Record<string, any> = {};
 
     for (const server of this.servers) {
-      if (server.status === 'connected' && server.enabled) {
+      if (server.status === "connected" && server.enabled) {
         const client = this.clients.get(server.id);
         if (client) {
           try {
             const tools = await client.getTools();
-            console.log(`🔧 Found ${tools.length} tools from server ${server.name}`);
-            
+            console.log(
+              `🔧 Found ${tools.length} tools from server ${server.name}`,
+            );
+
             for (const tool of tools) {
               const toolKey = `${server.id}:${tool.name}`;
               allTools[toolKey] = {
@@ -761,13 +801,19 @@ class MCPService {
                 serverId: server.id,
                 serverName: server.name,
                 execute: async (params: any) => {
-                  console.log(`🚀 Executing tool ${tool.name} with params:`, params);
+                  console.log(
+                    `🚀 Executing tool ${tool.name} with params:`,
+                    params,
+                  );
                   return await this.callTool(server.id, tool.name, params);
                 },
               };
             }
           } catch (error) {
-            console.error(`❌ Failed to get tools from server ${server.id}:`, error);
+            console.error(
+              `❌ Failed to get tools from server ${server.id}:`,
+              error,
+            );
           }
         }
       }
@@ -782,12 +828,14 @@ class MCPService {
     const allResources: Record<string, any> = {};
 
     for (const server of this.servers) {
-      if (server.status === 'connected' && server.enabled) {
+      if (server.status === "connected" && server.enabled) {
         const client = this.clients.get(server.id);
         if (client) {
           try {
             const resources = await client.getResources();
-            console.log(`📁 Found ${resources.length} resources from server ${server.name}`);
+            console.log(
+              `📁 Found ${resources.length} resources from server ${server.name}`,
+            );
 
             for (const resource of resources) {
               const resourceKey = `${server.id}:${resource.uri}`;
@@ -802,13 +850,18 @@ class MCPService {
               };
             }
           } catch (error) {
-            console.error(`❌ Failed to get resources from server ${server.id}:`, error);
+            console.error(
+              `❌ Failed to get resources from server ${server.id}:`,
+              error,
+            );
           }
         }
       }
     }
 
-    console.log(`📊 Total available resources: ${Object.keys(allResources).length}`);
+    console.log(
+      `📊 Total available resources: ${Object.keys(allResources).length}`,
+    );
     return allResources;
   }
 
@@ -817,12 +870,14 @@ class MCPService {
     const allPrompts: Record<string, any> = {};
 
     for (const server of this.servers) {
-      if (server.status === 'connected' && server.enabled) {
+      if (server.status === "connected" && server.enabled) {
         const client = this.clients.get(server.id);
         if (client) {
           try {
             const prompts = await client.getPrompts();
-            console.log(`💬 Found ${prompts.length} prompts from server ${server.name}`);
+            console.log(
+              `💬 Found ${prompts.length} prompts from server ${server.name}`,
+            );
 
             for (const prompt of prompts) {
               const promptKey = `${server.id}:${prompt.name}`;
@@ -831,19 +886,27 @@ class MCPService {
                 serverId: server.id,
                 serverName: server.name,
                 get: async (args?: any) => {
-                  console.log(`🎯 Getting prompt ${prompt.name} with args:`, args);
+                  console.log(
+                    `🎯 Getting prompt ${prompt.name} with args:`,
+                    args,
+                  );
                   return await this.getPrompt(server.id, prompt.name, args);
                 },
               };
             }
           } catch (error) {
-            console.error(`❌ Failed to get prompts from server ${server.id}:`, error);
+            console.error(
+              `❌ Failed to get prompts from server ${server.id}:`,
+              error,
+            );
           }
         }
       }
     }
 
-    console.log(`📊 Total available prompts: ${Object.keys(allPrompts).length}`);
+    console.log(
+      `📊 Total available prompts: ${Object.keys(allPrompts).length}`,
+    );
     return allPrompts;
   }
 
@@ -878,7 +941,6 @@ class MCPService {
         prompts,
         capabilities,
       };
-
     } catch (error) {
       return {
         success: false,
@@ -893,33 +955,44 @@ class MCPService {
   }
 
   getServer(serverId: string): MCPServer | undefined {
-    return this.servers.find(s => s.id === serverId);
+    return this.servers.find((s) => s.id === serverId);
   }
 
   getConnectedServers(): MCPServer[] {
-    return this.servers.filter(s => s.status === 'connected');
+    return this.servers.filter((s) => s.status === "connected");
   }
 
   getEnabledTools(): { serverId: string; tools: MCPTool[] }[] {
     return this.servers
-      .filter(s => s.status === 'connected' && s.enabled)
-      .map(s => ({
+      .filter((s) => s.status === "connected" && s.enabled)
+      .map((s) => ({
         serverId: s.id,
         tools: s.tools || [],
       }))
-      .filter(s => s.tools.length > 0);
+      .filter((s) => s.tools.length > 0);
   }
 
   // Statistics
   getStatistics() {
-    const connectedServers = this.servers.filter(s => s.status === 'connected').length;
-    const enabledServers = this.servers.filter(s => s.enabled).length;
-    const totalTools = this.servers.reduce((sum, s) => sum + (s.tools?.length || 0), 0);
-    const totalResources = this.servers.reduce((sum, s) => sum + (s.resources?.length || 0), 0);
-    const totalPrompts = this.servers.reduce((sum, s) => sum + (s.prompts?.length || 0), 0);
+    const connectedServers = this.servers.filter(
+      (s) => s.status === "connected",
+    ).length;
+    const enabledServers = this.servers.filter((s) => s.enabled).length;
+    const totalTools = this.servers.reduce(
+      (sum, s) => sum + (s.tools?.length || 0),
+      0,
+    );
+    const totalResources = this.servers.reduce(
+      (sum, s) => sum + (s.resources?.length || 0),
+      0,
+    );
+    const totalPrompts = this.servers.reduce(
+      (sum, s) => sum + (s.prompts?.length || 0),
+      0,
+    );
 
     // Count tools by server capability
-    const serverCapabilities = this.servers.map(s => ({
+    const serverCapabilities = this.servers.map((s) => ({
       id: s.id,
       name: s.name,
       status: s.status,
@@ -943,12 +1016,14 @@ class MCPService {
 
   private getHealthStatus(): string {
     const total = this.servers.length;
-    const connected = this.servers.filter(s => s.status === 'connected').length;
-    const errors = this.servers.filter(s => s.status === 'error').length;
+    const connected = this.servers.filter(
+      (s) => s.status === "connected",
+    ).length;
+    const errors = this.servers.filter((s) => s.status === "error").length;
 
-    if (total === 0) return 'No servers configured';
-    if (connected === total) return 'All servers healthy';
-    if (connected === 0) return 'All servers disconnected';
+    if (total === 0) return "No servers configured";
+    if (connected === total) return "All servers healthy";
+    if (connected === 0) return "All servers disconnected";
     if (errors > 0) return `${errors} server(s) with errors`;
     return `${connected}/${total} servers connected`;
   }
@@ -1010,7 +1085,7 @@ class MCPService {
     const stats = this.getStatistics();
     const allTools = await this.getAvailableTools();
 
-    const serverDetails = this.servers.map(server => ({
+    const serverDetails = this.servers.map((server) => ({
       id: server.id,
       name: server.name,
       status: server.status,
@@ -1026,7 +1101,8 @@ class MCPService {
       overview: {
         totalServers: stats.totalServers,
         connectedServers: stats.connectedServers,
-        totalCapabilities: stats.totalTools + stats.totalResources + stats.totalPrompts,
+        totalCapabilities:
+          stats.totalTools + stats.totalResources + stats.totalPrompts,
       },
       servers: serverDetails,
       aggregatedTools: allTools,
@@ -1040,11 +1116,11 @@ class MCPService {
   }
 
   removeListener(listener: (servers: MCPServer[]) => void): void {
-    this.listeners = this.listeners.filter(l => l !== listener);
+    this.listeners = this.listeners.filter((l) => l !== listener);
   }
 
   private notifyListeners(): void {
-    this.listeners.forEach(listener => listener(this.servers));
+    this.listeners.forEach((listener) => listener(this.servers));
   }
 
   // Cleanup
@@ -1053,12 +1129,13 @@ class MCPService {
     for (const [serverId] of this.clients) {
       await this.disconnectFromServer(serverId);
     }
-    
+
     this.clients.clear();
     this.listeners = [];
-    
-    console.log('MCP Service cleaned up');
+
+    console.log("MCP Service cleaned up");
   }
 }
 
-export const mcpService = new MCPService(); 
+export const mcpService = new MCPService();
+

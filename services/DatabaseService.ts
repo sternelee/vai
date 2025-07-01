@@ -1,6 +1,14 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
-import { database } from "./database/config";
-import { bookmarks, downloads, history, userScripts } from "./database/schema";
+import type { ChatSessionInfo, Message } from "../types/chat";
+import { database, rawDatabase } from "./database/config";
+import {
+  bookmarks,
+  chatMessages,
+  chatSessions,
+  downloads,
+  history,
+  userScripts
+} from "./database/schema";
 
 // Legacy interfaces for backward compatibility
 export interface HistoryItem {
@@ -49,7 +57,7 @@ class DatabaseService {
   private async createTables(): Promise<void> {
     try {
       // Create tables using raw SQL for initial setup
-      await database.run(sql`
+      await rawDatabase.execute(`
         CREATE TABLE IF NOT EXISTS history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL,
@@ -59,7 +67,7 @@ class DatabaseService {
         )
       `);
 
-      await database.run(sql`
+      await rawDatabase.execute(`
         CREATE TABLE IF NOT EXISTS bookmarks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL UNIQUE,
@@ -70,7 +78,7 @@ class DatabaseService {
         )
       `);
 
-      await database.run(sql`
+      await rawDatabase.execute(`
         CREATE TABLE IF NOT EXISTS downloads (
           id TEXT PRIMARY KEY,
           url TEXT NOT NULL,
@@ -89,7 +97,7 @@ class DatabaseService {
         )
       `);
 
-      await database.run(sql`
+      await rawDatabase.execute(`
         CREATE TABLE IF NOT EXISTS user_scripts (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -115,24 +123,65 @@ class DatabaseService {
         )
       `);
 
+      // Create chat-related tables
+      await rawDatabase.execute(`
+        CREATE TABLE IF NOT EXISTS chat_sessions (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          page_url TEXT,
+          page_title TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          is_active INTEGER DEFAULT 1
+        )
+      `);
+
+      await rawDatabase.execute(`
+        CREATE TABLE IF NOT EXISTS chat_messages (
+          id TEXT PRIMARY KEY,
+          chat_session_id TEXT NOT NULL,
+          role TEXT NOT NULL CHECK (role IN ('user', 'assistant', 'system', 'tool')),
+          content TEXT NOT NULL,
+          tool_invocations TEXT,
+          attachments TEXT,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (chat_session_id) REFERENCES chat_sessions (id) ON DELETE CASCADE
+        )
+      `);
+
       // Create indexes
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)`,
       );
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at)`,
       );
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url)`,
       );
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder)`,
       );
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
       );
-      await database.run(
-        sql`CREATE INDEX IF NOT EXISTS idx_downloads_start_time ON downloads(start_time)`,
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_downloads_start_time ON downloads(start_time)`,
+      );
+      
+      // Chat indexes
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(chat_session_id)`,
+      );
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)`,
+      );
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON chat_sessions(is_active)`,
+      );
+      await rawDatabase.execute(
+        `CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON chat_sessions(updated_at)`,
       );
     } catch (error) {
       console.error("Failed to create tables:", error);
@@ -839,6 +888,245 @@ class DatabaseService {
         builtIn: 0,
         user: 0,
         totalRuns: 0,
+      };
+    }
+  }
+
+  // Chat Management Methods
+  async createChatSession(pageTitle: string, pageUrl?: string): Promise<string> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const sessionId = `chat_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      await database.insert(chatSessions).values({
+        id: sessionId,
+        title: pageTitle,
+        pageUrl: pageUrl || null,
+        pageTitle: pageTitle,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isActive: true,
+      });
+
+      return sessionId;
+    } catch (error) {
+      console.error("Failed to create chat session:", error);
+      throw error;
+    }
+  }
+
+  async saveChatMessage(message: Message, sessionId: string): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const content = typeof message.content === 'string' 
+        ? message.content 
+        : JSON.stringify(message.content);
+
+      await database.insert(chatMessages).values({
+        id: message.id,
+        chatSessionId: sessionId,
+        role: message.role,
+        content,
+        toolInvocations: message.toolInvocations ? JSON.stringify(message.toolInvocations) : null,
+        attachments: message.experimental_attachments ? JSON.stringify(message.experimental_attachments) : null,
+        createdAt: message.createdAt ? message.createdAt.toISOString() : new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      });
+
+      // Update session timestamp
+      await database
+        .update(chatSessions)
+        .set({ updatedAt: new Date().toISOString() })
+        .where(eq(chatSessions.id, sessionId));
+
+    } catch (error) {
+      console.error("Failed to save chat message:", error);
+      throw error;
+    }
+  }
+
+  async getChatMessages(sessionId: string, limit: number = 100): Promise<Message[]> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const result = await database
+        .select()
+        .from(chatMessages)
+        .where(eq(chatMessages.chatSessionId, sessionId))
+        .orderBy(chatMessages.createdAt)
+        .limit(limit);
+
+      return result.map((row) => {
+        let content: string | any[];
+        try {
+          // Try to parse as JSON for complex content
+          content = JSON.parse(row.content);
+        } catch {
+          // Fallback to string content
+          content = row.content;
+        }
+
+        const message: Message = {
+          id: row.id,
+          role: row.role as any,
+          content,
+          createdAt: new Date(row.createdAt || new Date().toISOString()),
+        };
+
+        if (row.toolInvocations) {
+          try {
+            message.toolInvocations = JSON.parse(row.toolInvocations);
+          } catch (e) {
+            console.warn("Failed to parse tool invocations:", e);
+          }
+        }
+
+        if (row.attachments) {
+          try {
+            message.experimental_attachments = JSON.parse(row.attachments);
+          } catch (e) {
+            console.warn("Failed to parse attachments:", e);
+          }
+        }
+
+        return message;
+      });
+    } catch (error) {
+      console.error("Failed to get chat messages:", error);
+      return [];
+    }
+  }
+
+  async getChatSessions(limit: number = 50): Promise<ChatSessionInfo[]> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      // Get sessions with message count and last message
+      const result = await database
+        .select({
+          id: chatSessions.id,
+          title: chatSessions.title,
+          pageUrl: chatSessions.pageUrl,
+          pageTitle: chatSessions.pageTitle,
+          createdAt: chatSessions.createdAt,
+          updatedAt: chatSessions.updatedAt,
+          isActive: chatSessions.isActive,
+          messageCount: sql<number>`(
+            SELECT COUNT(*) FROM chat_messages 
+            WHERE chat_session_id = chat_sessions.id
+          )`,
+          lastMessage: sql<string>`(
+            SELECT content FROM chat_messages 
+            WHERE chat_session_id = chat_sessions.id 
+            ORDER BY created_at DESC 
+            LIMIT 1
+          )`,
+        })
+        .from(chatSessions)
+        .where(eq(chatSessions.isActive, true))
+        .orderBy(desc(chatSessions.updatedAt))
+        .limit(limit);
+
+      return result.map((row) => ({
+        id: row.id,
+        title: row.title,
+        pageUrl: row.pageUrl || undefined,
+        pageTitle: row.pageTitle || undefined,
+        createdAt: new Date(row.createdAt || new Date().toISOString()),
+        updatedAt: new Date(row.updatedAt || new Date().toISOString()),
+        isActive: Boolean(row.isActive),
+        messageCount: row.messageCount || 0,
+        lastMessage: row.lastMessage || undefined,
+      }));
+    } catch (error) {
+      console.error("Failed to get chat sessions:", error);
+      return [];
+    }
+  }
+
+  async deleteChatSession(sessionId: string): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      // Delete messages first (though CASCADE should handle this)
+      await database.delete(chatMessages).where(eq(chatMessages.chatSessionId, sessionId));
+      
+      // Delete session
+      await database.delete(chatSessions).where(eq(chatSessions.id, sessionId));
+    } catch (error) {
+      console.error("Failed to delete chat session:", error);
+      throw error;
+    }
+  }
+
+  async clearChatHistory(sessionId: string): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database.delete(chatMessages).where(eq(chatMessages.chatSessionId, sessionId));
+      
+      // Update session timestamp
+      await database
+        .update(chatSessions)
+        .set({ updatedAt: new Date().toISOString() })
+        .where(eq(chatSessions.id, sessionId));
+    } catch (error) {
+      console.error("Failed to clear chat history:", error);
+      throw error;
+    }
+  }
+
+  async updateChatSessionTitle(sessionId: string, title: string): Promise<void> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      await database
+        .update(chatSessions)
+        .set({ 
+          title,
+          updatedAt: new Date().toISOString() 
+        })
+        .where(eq(chatSessions.id, sessionId));
+    } catch (error) {
+      console.error("Failed to update chat session title:", error);
+      throw error;
+    }
+  }
+
+  async getChatStats(): Promise<{
+    totalSessions: number;
+    totalMessages: number;
+    activeSessions: number;
+  }> {
+    if (!this.initialized) throw new Error("Database not initialized");
+
+    try {
+      const [sessionStats] = await database
+        .select({
+          totalSessions: count(),
+          activeSessions: sql<number>`SUM(CASE WHEN is_active = 1 THEN 1 ELSE 0 END)`,
+        })
+        .from(chatSessions);
+
+      const [messageStats] = await database
+        .select({
+          totalMessages: count(),
+        })
+        .from(chatMessages);
+
+      return {
+        totalSessions: sessionStats?.totalSessions || 0,
+        totalMessages: messageStats?.totalMessages || 0,
+        activeSessions: sessionStats?.activeSessions || 0,
+      };
+    } catch (error) {
+      console.error("Failed to get chat stats:", error);
+      return {
+        totalSessions: 0,
+        totalMessages: 0,
+        activeSessions: 0,
       };
     }
   }
