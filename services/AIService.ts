@@ -7,14 +7,16 @@ import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createXai } from "@ai-sdk/xai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
+import { createZhipu } from "zhipu-ai-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
-  CoreMessage,
+  convertToModelMessages,
   extractReasoningMiddleware,
   generateText,
   streamText,
+  UIMessage,
 } from "ai";
-import { createZhipu } from "zhipu-ai-provider";
+import { z } from "zod";
 import { mcpService } from "./MCPService";
 
 class AIError extends Error {
@@ -653,7 +655,7 @@ class AIService {
       const provider = this.getProviderInstance();
       const model = provider(this.config.model);
 
-      const messages: CoreMessage[] = [];
+      const messages = [];
 
       if (context) {
         messages.push({
@@ -672,11 +674,9 @@ class AIService {
 
       const result = await generateText({
         model,
-        messages,
+        messages: convertToModelMessages(messages as unknown as UIMessage[]),
         tools: mcpTools,
-        maxSteps: 5, // Allow multi-step tool usage
         temperature: 0.7,
-        maxTokens: 1000,
       });
 
       return result.text;
@@ -693,35 +693,44 @@ class AIService {
   private async prepareStreamConfig(
     message: string,
     context?: string,
-    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
+    conversationHistory: UIMessage[] = [],
     emphasizeMCP: boolean = false,
   ) {
     if (!this.isConfigured() || !this.config) {
       throw new AIError("AI service not configured");
     }
 
-    const messages: CoreMessage[] = [];
+    const messages: UIMessage[] = [];
 
     // Add context if provided
     if (context) {
       messages.push({
+        id: "0",
         role: "system",
-        content: `You are a helpful AI assistant for a web browser with access to external tools via MCP. Context: ${context}`,
+        parts: [
+          {
+            type: "text",
+            text: `You are a helpful AI assistant for a web browser with access to external tools via MCP. Context: ${context}`,
+          },
+        ],
       });
     }
 
     // Add conversation history
     conversationHistory.forEach((msg) => {
-      messages.push({
-        role: msg.role,
-        content: msg.content,
-      });
+      messages.push(msg);
     });
 
     // Add current message
     messages.push({
+      id: Date.now().toString(),
       role: "user",
-      content: message,
+      parts: [
+        {
+          type: "text",
+          text: message,
+        },
+      ],
     });
 
     const mcpTools = await mcpService.getAvailableTools();
@@ -729,7 +738,7 @@ class AIService {
 
     return {
       model: this.getProviderInstance()(this.config.model),
-      messages,
+      messages: convertToModelMessages(messages as unknown as UIMessage[]),
       tools: hasMCPTools ? mcpTools : undefined,
       maxSteps: hasMCPTools ? 5 : undefined,
       maxTokens: 1000,
@@ -748,31 +757,46 @@ class AIService {
   }
 
   // Stream AI responses for chat
-  async streamResponse(
-    message: string,
-    context?: string,
-    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
-  ): Promise<ReadableStream<string>> {
+  async streamFetch(_: string, option: RequestInit) {
+    const {
+      message,
+      context = "",
+      conversationHistory = [],
+    } = JSON.parse(option.body as string) as {
+      message: string;
+      context?: string;
+      conversationHistory: UIMessage[];
+    };
     try {
       const streamConfig = await this.prepareStreamConfig(
         message,
         context,
         conversationHistory,
       );
-      const result = await streamText(streamConfig);
+      const result = streamText({
+        ...streamConfig,
+        onChunk: (chunk) => {
+          console.log("Stream chunk:", chunk);
+        },
+        providerOptions: {
+          google: {
+            thinkingConfig: {
+              thinkingBudget: 2048,
+            },
+          },
+          anthropic: {
+            thinking: {
+              type: "enabled",
+              budgetTokens: 12000,
+            },
+          },
+        },
+      });
+      result.consumeStream();
       console.log("Stream result:", result);
 
-      return new ReadableStream({
-        async start(controller) {
-          try {
-            for await (const delta of result.textStream) {
-              controller.enqueue(delta);
-            }
-            controller.close();
-          } catch (error) {
-            controller.error(error);
-          }
-        },
+      return result.toUIMessageStreamResponse({
+        sendReasoning: true,
       });
     } catch (error) {
       console.error("Streaming error:", error);
@@ -782,12 +806,18 @@ class AIService {
   }
 
   // Enhanced streaming with explicit MCP support
-  async streamResponseWithMCP(
+  async streamFetchWithMCP(
     message: string,
     context?: string,
-    conversationHistory: { role: "user" | "assistant"; content: string }[] = [],
-  ): Promise<ReadableStream<string>> {
-    return this.streamResponse(message, context, conversationHistory);
+    conversationHistory: UIMessage[] = [],
+  ) {
+    return this.streamFetch("", {
+      body: JSON.stringify({
+        message,
+        context,
+        conversationHistory,
+      }),
+    });
   }
 
   // Get MCP statistics
@@ -830,7 +860,7 @@ class AIService {
       const provider = this.getProviderInstance();
       const model = provider(this.config.model);
 
-      const messages: CoreMessage[] = [];
+      const messages = [];
 
       if (context) {
         messages.push({
@@ -846,9 +876,8 @@ class AIService {
 
       const result = await streamText({
         model,
-        messages,
+        messages: convertToModelMessages(messages as unknown as UIMessage[]),
         temperature: 0.7,
-        maxTokens: 1000,
       });
 
       for await (const delta of result.textStream) {
@@ -924,7 +953,6 @@ Please provide:
       const result = await generateText({
         model,
         messages: [{ role: "user", content: prompt }],
-        maxTokens: 500,
         temperature: 0.3,
       });
 
@@ -971,7 +999,6 @@ Return JSON array of suggestions with title, url, and type.`;
       const result = await generateText({
         model,
         messages: [{ role: "user", content: prompt }],
-        maxTokens: 300,
         temperature: 0.5,
       });
 
@@ -1069,7 +1096,6 @@ Provide only the translation, no explanations.`;
       const result = await generateText({
         model,
         messages: [{ role: "user", content: prompt }],
-        maxTokens: 1000,
         temperature: 0.3,
       });
 
@@ -1109,3 +1135,9 @@ Provide only the translation, no explanations.`;
 }
 
 export const aiService = new AIService();
+
+export const MetadataSchema = z.object({
+  duration: z.number().optional(),
+  model: z.string().optional(),
+  totalTokens: z.number().optional(),
+});

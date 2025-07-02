@@ -1,21 +1,24 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Modal,
-    SafeAreaView,
-    Share,
-    StatusBar,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Alert,
+  Modal,
+  SafeAreaView,
+  Share,
+  StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { WebView } from "react-native-webview";
+import { UIMessage, DefaultChatTransport } from "ai";
+import { useChat } from "@ai-sdk/react";
 
 // Components
 import AddressBar from "@/components/browser/AddressBar";
 import AIChatPanel from "@/components/browser/AIChatPanel";
+import AIChatWithAPIRoute from "@/components/browser/AIChatWithAPIRoute";
 import BookmarkManager from "@/components/browser/BookmarkManager";
 import BottomNavigationBar from "@/components/browser/BottomNavigationBar";
 import BrowserWebView from "@/components/browser/BrowserWebView";
@@ -37,6 +40,7 @@ import { mcpService } from "@/services/MCPService";
 import { performanceService } from "@/services/PerformanceService";
 import { resourceSnifferService } from "@/services/ResourceSnifferService";
 import { userScriptService } from "@/services/UserScriptService";
+import { generateAPIUrl } from "@/utils";
 
 // Hooks
 import { useColorScheme } from "@/hooks/useColorScheme";
@@ -125,7 +129,7 @@ export default function BrowserScreen() {
   const [aiChatVisible, setAiChatVisible] = useState(false);
   const [apiChatVisible, setApiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
-  const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
+  const [aiMessages, setAiMessages] = useState<UIMessage[]>([]);
   const [aiConfigured, setAiConfigured] = useState(false);
   const [performanceStats, setPerformanceStats] = useState<any>(null);
   const [selectedText, setSelectedText] = useState<string>("");
@@ -697,16 +701,43 @@ export default function BrowserScreen() {
     }
   };
 
-  const handleSendAIMessage = async (
-    message: string,
-    context: string,
-  ): Promise<ReadableStream<string>> => {
+  const {
+    messages,
+    error,
+    // setMessages,
+    sendMessage,
+    regenerate,
+    resumeStream,
+    addToolResult,
+    status,
+  } = useChat<UIMessage>({
+    transport: new DefaultChatTransport({
+      // @ts-ignore
+      fetch: aiService.streamFetch,
+      body: {
+        // config: config, // Pass AI config to API route
+      },
+    }),
+    onError: (error) => {
+      console.error("Chat error:", error);
+      Alert.alert("Chat Error", error.message);
+    },
+    onFinish: (message) => {
+      console.log("Chat finished:", message); // Debug log
+    },
+  });
+
+  const handleSendAIMessage = async (message: string, context: string) => {
     // Add user message
-    const userMessage: ChatMessage = {
+    const userMessage: UIMessage = {
       id: Date.now().toString(),
       role: "user",
-      content: message,
-      timestamp: Date.now(),
+      parts: [
+        {
+          type: "text",
+          text: message,
+        },
+      ],
     };
     setAiMessages((prev) => [...prev, userMessage]);
 
@@ -714,75 +745,30 @@ export default function BrowserScreen() {
       if (!aiConfigured) {
         throw new Error("AI not configured");
       }
-
-      // Get AI response using the real AI service
-      const responseStream = await aiService.streamResponse(
-        message,
-        context,
-        aiMessages.map((msg) => ({
-          role: msg.role,
-          content: msg.content,
-        })),
-      );
-
-      // Create assistant message placeholder
-      const assistantMessageId = (Date.now() + 1).toString();
-      const assistantMessage: ChatMessage = {
-        id: assistantMessageId,
-        role: "assistant",
-        content: "",
-        timestamp: Date.now(),
-        isStreaming: true,
-      };
-
-      setAiMessages((prev) => [...prev, assistantMessage]);
-
-      // Handle the streaming response
-      const reader = responseStream.getReader();
-      let accumulatedContent = "";
-
-      try {
-        while (true) {
-          const { done, value } = await reader.read();
-          if (done) break;
-
-          accumulatedContent += value;
-
-          // Update the streaming message
-          setAiMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessageId
-                ? { ...msg, content: accumulatedContent }
-                : msg,
-            ),
-          );
-        }
-
-        // Mark as complete
-        setAiMessages((prev) =>
-          prev.map((msg) =>
-            msg.id === assistantMessageId
-              ? { ...msg, isStreaming: false }
-              : msg,
-          ),
-        );
-      } finally {
-        reader.releaseLock();
-      }
-
-      return responseStream;
+      sendMessage({
+        role: "user",
+        parts: [
+          {
+            type: "text",
+            text: message,
+          },
+        ],
+      });
     } catch (error) {
       console.error("AI chat error:", error);
 
       // Remove user message and add error message
       setAiMessages((prev) => prev.slice(0, -1));
 
-      const errorMessage: ChatMessage = {
+      const errorMessage: UIMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
-        content:
-          "Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.",
-        timestamp: Date.now(),
+        parts: [
+          {
+            type: "text",
+            text: "Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.",
+          },
+        ],
       };
 
       setAiMessages((prev) => [...prev, errorMessage]);
@@ -1167,15 +1153,26 @@ export default function BrowserScreen() {
         onPress: () => setAiChatVisible(true),
         disabled: !aiConfigured,
       },
-      {
-        id: "ai_api_chat",
-        title: "AI API Route 聊天",
-        subtitle: aiConfigured ? "使用API Route方式的AI聊天" : "需要配置AI提供商",
-        icon: "cloud",
-        color: "#32D74B",
-        onPress: () => setApiChatVisible(true),
-        disabled: !aiConfigured,
-      },
+      // {
+      //   id: "ai_api_chat",
+      //   title: "AI API Route 聊天",
+      //   subtitle: aiConfigured
+      //     ? "使用API Route方式的AI聊天"
+      //     : "需要配置AI提供商",
+      //   icon: "cloud",
+      //   color: "#32D74B",
+      //   onPress: () => setApiChatVisible(true),
+      //   disabled: !aiConfigured,
+      // },
+      // {
+      //   id: "test_api",
+      //   title: "测试 API Route",
+      //   subtitle: "调试API Route连接",
+      //   icon: "bug",
+      //   color: "#FF3B30",
+      //   onPress: testAPIRoute,
+      //   disabled: !aiConfigured,
+      // },
       {
         id: "ai_quick",
         title: "快速AI对话",
@@ -1447,6 +1444,79 @@ export default function BrowserScreen() {
         </Text>
       </View>
     );
+  };
+
+  // Add a test function to debug API route
+  const testAPIRoute = async () => {
+    try {
+      console.log("Testing API route...");
+      const config = aiService.getConfig();
+      console.log("AI Config:", config);
+
+      if (!config) {
+        Alert.alert("Error", "AI not configured");
+        return;
+      }
+
+      const testMessages = [
+        {
+          id: "test-1",
+          role: "user" as const,
+          content: "Hello, can you say hello back?",
+        },
+      ];
+
+      const response = await fetch(generateAPIUrl("/api/chat"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          messages: testMessages,
+          config: config,
+        }),
+      });
+
+      console.log("Response status:", response.status);
+      console.log(
+        "Response headers:",
+        Object.fromEntries(response.headers.entries()),
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("API Error:", errorText);
+        Alert.alert("API Error", errorText);
+        return;
+      }
+
+      // Check if it's a streaming response
+      if (response.headers.get("content-type")?.includes("text/plain")) {
+        const reader = response.body?.getReader();
+        if (reader) {
+          let result = "";
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            const chunk = new TextDecoder().decode(value);
+            result += chunk;
+            console.log("Stream chunk:", chunk);
+          }
+          console.log("Full response:", result);
+          Alert.alert(
+            "Success",
+            "API route working! Check console for details.",
+          );
+        }
+      } else {
+        const result = await response.text();
+        console.log("Response:", result);
+        Alert.alert("Response", result);
+      }
+    } catch (error) {
+      console.error("Test error:", error);
+      Alert.alert("Test Error", (error as Error).message);
+    }
   };
 
   if (!currentTab) {
@@ -1748,5 +1818,38 @@ const styles = StyleSheet.create({
   },
   contentContainer: {
     flex: 1,
+  },
+  button: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    minWidth: 80,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  buttonText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#333",
+    textAlign: "center",
+  },
+  settingsButton: {
+    backgroundColor: "#F8F9FA",
+    borderRadius: 16,
+    padding: 20,
+    alignItems: "center",
+    minWidth: 80,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  settingsButtonDark: {
+    backgroundColor: "#2C2C2E",
   },
 });

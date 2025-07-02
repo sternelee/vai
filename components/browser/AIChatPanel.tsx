@@ -25,10 +25,7 @@ interface AIChatPanelProps {
   currentPageUrl: string;
   currentPageContent: string;
   selectedText?: string;
-  onSendMessage: (
-    message: string,
-    context: string,
-  ) => Promise<ReadableStream<string>>;
+  onSendMessage: (message: string, context: string) => Promise<void>;
   aiConfigured: boolean;
   onConfigureAI: () => void;
 }
@@ -159,12 +156,13 @@ export default function AIChatPanel({
 
       // Get response stream
       const responseStream = await onSendMessage(messageText, context);
-      const reader = responseStream.getReader();
+      const reader = responseStream.body?.getReader();
       let accumulatedResponse = "";
 
       try {
         while (true) {
-          const { done, value } = await reader.read();
+          // @ts-ignore
+          const { done, value } = await reader?.read();
           if (done) break;
 
           accumulatedResponse += value;
@@ -189,7 +187,7 @@ export default function AIChatPanel({
           currentSessionId,
         );
       } finally {
-        reader.releaseLock();
+        reader?.releaseLock();
         setStreamingMessageId(null);
       }
     } catch (error) {

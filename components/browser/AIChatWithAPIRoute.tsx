@@ -1,21 +1,23 @@
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { generateAPIUrl } from "@/utils";
+import { FetchFunction } from "@ai-sdk/provider-utils";
 import { useChat } from "@ai-sdk/react";
 import { Ionicons } from "@expo/vector-icons";
+import { DefaultChatTransport, UIMessage } from "ai";
 import { fetch as expoFetch } from "expo/fetch";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    KeyboardAvoidingView,
-    Modal,
-    Platform,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 import { aiService } from "../../services/AIService";
@@ -54,22 +56,34 @@ export default function AIChatWithAPIRoute({
   // Use compatible configuration with AI SDK 5 API Route
   const {
     messages,
-    handleInputChange,
-    handleSubmit,
-    input,
-    isLoading,
-    error
-  } = useChat({
-    fetch: expoFetch as unknown as typeof globalThis.fetch,
-    api: generateAPIUrl('/api/chat'),
-    body: {
-      config: config, // Pass AI config to API route
-    },
+    error,
+    // setMessages,
+    sendMessage,
+    regenerate,
+    resumeStream,
+    addToolResult,
+    status,
+  } = useChat<UIMessage>({
+    transport: new DefaultChatTransport({
+      api: generateAPIUrl("/api/chat"),
+      fetch: expoFetch as unknown as FetchFunction,
+      body: {
+        config: config, // Pass AI config to API route
+      },
+    }),
     onError: (error) => {
-      console.error('Chat error:', error);
-      Alert.alert('Chat Error', error.message);
+      console.error("Chat error:", error);
+      Alert.alert("Chat Error", error.message);
+    },
+    onFinish: (message) => {
+      console.log("Chat finished:", message); // Debug log
     },
   });
+
+  const isLoading = useMemo(
+    () => ["streaming", "submitted"].includes(status),
+    [status],
+  );
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -98,6 +112,14 @@ export default function AIChatWithAPIRoute({
   ]);
 
   const handleSendMessage = () => {
+    console.log(
+      "Sending message:",
+      inputText,
+      "isLoading:",
+      isLoading,
+      "status:",
+      status,
+    );
     if (!inputText.trim() || isLoading) return;
 
     if (!aiConfigured) {
@@ -121,59 +143,72 @@ Content preview: ${currentPageContent.substring(0, 2000)}
 User question: ${inputText}
     `;
 
-    // Simulate input change and submit (compatible approach)
-    const syntheticEvent = {
-      target: { value: contextMessage },
-      nativeEvent: { text: contextMessage },
-    } as unknown as React.ChangeEvent<HTMLInputElement>;
+    console.log("Prepared context message:", contextMessage); // Debug log
 
-    handleInputChange(syntheticEvent);
-
-    setTimeout(() => {
-      const submitEvent = {
-        preventDefault: () => {},
-      } as unknown as React.FormEvent<HTMLFormElement>;
-      handleSubmit(submitEvent);
+    try {
+      // Clear input immediately
+      const messageToSend = contextMessage;
       setInputText("");
-    }, 100);
+
+      // Send message with proper format for AI SDK 5
+      sendMessage({
+        text: messageToSend,
+      });
+
+      console.log("Message sent successfully"); // Debug log
+    } catch (error) {
+      console.error("Error sending message:", error);
+      Alert.alert(
+        "Error",
+        "Failed to send message: " + (error as Error).message,
+      );
+      // Restore input text on error
+      setInputText(inputText);
+    }
   };
 
-  const renderMessage = ({ item }: { item: any }) => (
-    <View style={[styles.messageContainer, isDark && styles.messageContainerDark]}>
+  const renderMessage = ({ item }: { item: UIMessage }) => (
+    <View
+      style={[styles.messageContainer, isDark && styles.messageContainerDark]}
+    >
       <View style={styles.messageHeader}>
-        <Text style={[
-          styles.messageRole,
-          isDark && styles.messageRoleDark,
-          item.role === 'user' && styles.userRole,
-          item.role === 'assistant' && styles.assistantRole
-        ]}>
-          {item.role === 'user' ? '👤 You' : '🤖 Assistant'}
+        <Text
+          style={[
+            styles.messageRole,
+            isDark && styles.messageRoleDark,
+            item.role === "user" && styles.userRole,
+            item.role === "assistant" && styles.assistantRole,
+          ]}
+        >
+          {item.role === "user" ? "👤 You" : "🤖 Assistant"}
         </Text>
       </View>
-      <View style={[styles.messageContent, isDark && styles.messageContentDark]}>
+      <View
+        style={[styles.messageContent, isDark && styles.messageContentDark]}
+      >
         {/* Handle both AI SDK 5 parts structure and legacy content */}
         {item.parts ? (
           // AI SDK 5 parts structure
           item.parts.map((part: any, index: number) => {
             switch (part.type) {
-              case 'text':
+              case "text":
                 return (
                   <Markdown
                     key={index}
                     style={{
                       body: {
-                        color: isDark ? '#ffffff' : '#000000',
+                        color: isDark ? "#ffffff" : "#000000",
                         fontSize: 16,
                       },
                       code_inline: {
-                        backgroundColor: isDark ? '#333333' : '#f0f0f0',
-                        color: isDark ? '#ffffff' : '#000000',
+                        backgroundColor: isDark ? "#333333" : "#f0f0f0",
+                        color: isDark ? "#ffffff" : "#000000",
                         paddingHorizontal: 4,
                         paddingVertical: 2,
                         borderRadius: 4,
                       },
                       code_block: {
-                        backgroundColor: isDark ? '#2a2a2a' : '#f8f8f8',
+                        backgroundColor: isDark ? "#2a2a2a" : "#f8f8f8",
                         padding: 10,
                         borderRadius: 8,
                         marginVertical: 5,
@@ -183,66 +218,87 @@ User question: ${inputText}
                     {part.text}
                   </Markdown>
                 );
-              case 'tool-call':
+              case "tool-call":
                 return (
                   <View key={index} style={{ marginVertical: 4 }}>
-                    <Text style={[styles.toolCallText, isDark && styles.messageTextDark]}>
+                    <Text
+                      style={[
+                        styles.toolCallText,
+                        isDark && styles.messageTextDark,
+                      ]}
+                    >
                       🔧 Tool: {part.toolName}
                     </Text>
-                    <Text style={[styles.messageText, isDark && styles.messageTextDark]}>
+                    <Text
+                      style={[
+                        styles.messageText,
+                        isDark && styles.messageTextDark,
+                      ]}
+                    >
                       {JSON.stringify(part.args, null, 2)}
                     </Text>
                   </View>
                 );
               default:
-                if (part.type && part.type.startsWith('tool-')) {
+                if (part.type && part.type.startsWith("tool-")) {
                   return (
                     <View key={index} style={{ marginVertical: 4 }}>
-                      <Text style={[styles.toolCallText, isDark && styles.messageTextDark]}>
+                      <Text
+                        style={[
+                          styles.toolCallText,
+                          isDark && styles.messageTextDark,
+                        ]}
+                      >
                         🔧 {part.type}
                       </Text>
-                      <Text style={[styles.messageText, isDark && styles.messageTextDark]}>
+                      <Text
+                        style={[
+                          styles.messageText,
+                          isDark && styles.messageTextDark,
+                        ]}
+                      >
                         {JSON.stringify(part, null, 2)}
                       </Text>
                     </View>
                   );
                 }
                 return (
-                  <Text key={index} style={[styles.messageText, isDark && styles.messageTextDark]}>
+                  <Text
+                    key={index}
+                    style={[
+                      styles.messageText,
+                      isDark && styles.messageTextDark,
+                    ]}
+                  >
                     {JSON.stringify(part, null, 2)}
                   </Text>
                 );
             }
           })
-        ) : item.toolInvocations ? (
-          // Legacy tool invocations
-          <Text style={[styles.messageText, isDark && styles.messageTextDark]}>
-            {JSON.stringify(item.toolInvocations, null, 2)}
-          </Text>
         ) : (
-          // Standard content
+          // Standard content - handle both content and text properties
           <Markdown
             style={{
               body: {
-                color: isDark ? '#ffffff' : '#000000',
+                color: isDark ? "#ffffff" : "#000000",
                 fontSize: 16,
               },
               code_inline: {
-                backgroundColor: isDark ? '#333333' : '#f0f0f0',
-                color: isDark ? '#ffffff' : '#000000',
+                backgroundColor: isDark ? "#333333" : "#f0f0f0",
+                color: isDark ? "#ffffff" : "#000000",
                 paddingHorizontal: 4,
                 paddingVertical: 2,
                 borderRadius: 4,
               },
               code_block: {
-                backgroundColor: isDark ? '#2a2a2a' : '#f8f8f8',
+                backgroundColor: isDark ? "#2a2a2a" : "#f8f8f8",
                 padding: 10,
                 borderRadius: 8,
                 marginVertical: 5,
               },
             }}
           >
-            {item.content || 'No content'}
+            {(item as any).content || (item as any).text || "No content"}
           </Markdown>
         )}
       </View>
@@ -251,14 +307,22 @@ User question: ${inputText}
 
   if (error) {
     return (
-      <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+      <Modal
+        visible={visible}
+        animationType="slide"
+        presentationStyle="pageSheet"
+      >
         <View style={[styles.container, isDark && styles.containerDark]}>
           <View style={[styles.header, isDark && styles.headerDark]}>
             <Text style={[styles.title, isDark && styles.titleDark]}>
               AI Chat Error
             </Text>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-              <Ionicons name="close" size={24} color={isDark ? "#ffffff" : "#000000"} />
+              <Ionicons
+                name="close"
+                size={24}
+                color={isDark ? "#ffffff" : "#000000"}
+              />
             </TouchableOpacity>
           </View>
           <View style={styles.errorContainer}>
@@ -272,7 +336,11 @@ User question: ${inputText}
   }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet">
+    <Modal
+      visible={visible}
+      animationType="slide"
+      presentationStyle="pageSheet"
+    >
       <KeyboardAvoidingView
         style={[styles.container, isDark && styles.containerDark]}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -282,7 +350,11 @@ User question: ${inputText}
             AI Chat (SDK 5 Compatible)
           </Text>
           <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-            <Ionicons name="close" size={24} color={isDark ? "#ffffff" : "#000000"} />
+            <Ionicons
+              name="close"
+              size={24}
+              color={isDark ? "#ffffff" : "#000000"}
+            />
           </TouchableOpacity>
         </View>
 
@@ -296,7 +368,9 @@ User question: ${inputText}
           showsVerticalScrollIndicator={false}
         />
 
-        <View style={[styles.inputContainer, isDark && styles.inputContainerDark]}>
+        <View
+          style={[styles.inputContainer, isDark && styles.inputContainerDark]}
+        >
           <TextInput
             ref={inputRef}
             style={[styles.textInput, isDark && styles.textInputDark]}

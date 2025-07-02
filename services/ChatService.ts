@@ -39,7 +39,7 @@ export class ChatService {
     conversationHistory: Message[] = [],
   ): Promise<{
     userMessage: Message;
-    responseStream: ReadableStream<string>;
+    responseStream: Response;
     assistantMessageId: string;
   }> {
     try {
@@ -238,4 +238,3 @@ export class ChatService {
 }
 
 export const chatService = new ChatService();
-
