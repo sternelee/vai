@@ -33,7 +33,9 @@
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "@bacons/apple-colors",
       "expo-router",
+      "expo-font",
       [
         "expo-splash-screen",
         {
@@ -46,7 +48,8 @@
       "expo-secure-store"
     ],
     "experiments": {
-      "typedRoutes": true
+      "typedRoutes": true,
+      "reactServerFunctions": true
     },
     "extra": {
       "router": {},

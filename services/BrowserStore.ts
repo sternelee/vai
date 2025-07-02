@@ -1,5 +1,5 @@
 import { BehaviorSubject, Subject } from "rxjs";
-import { v4 as uuidv4 } from "uuid";
+import { nanoid } from "@/utils";
 
 export interface Tab {
   id: string;
@@ -73,7 +73,7 @@ class BrowserStore {
   // Tab management
   createNewTab(url: string = "https://www.google.com"): string {
     const newTab: Tab = {
-      id: uuidv4(),
+      id: nanoid(),
       url,
       title: "New Tab",
       canGoBack: false,
@@ -282,4 +282,3 @@ class BrowserStore {
 }
 
 export const browserStore = new BrowserStore();
-

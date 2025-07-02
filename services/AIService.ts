@@ -1,20 +1,20 @@
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createAzure } from "@ai-sdk/azure";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createGroq } from "@ai-sdk/groq";
+import { createMistral } from "@ai-sdk/mistral";
+import { createOpenAI } from "@ai-sdk/openai";
+import { createXai } from "@ai-sdk/xai";
+import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   CoreMessage,
+  extractReasoningMiddleware,
   generateText,
   streamText,
-  extractReasoningMiddleware,
 } from "ai";
-import { createOpenAI } from "@ai-sdk/openai";
-import { createGroq } from "@ai-sdk/groq";
-import { createAnthropic } from "@ai-sdk/anthropic";
-import { createXai } from "@ai-sdk/xai";
-import { createDeepSeek } from "@ai-sdk/deepseek";
 import { createZhipu } from "zhipu-ai-provider";
-import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { createMistral } from "@ai-sdk/mistral";
-import { createGoogleGenerativeAI } from "@ai-sdk/google";
-import { createAzure } from "@ai-sdk/azure";
 import { mcpService } from "./MCPService";
 
 class AIError extends Error {
@@ -597,7 +597,7 @@ class AIService {
   }
 
   // Get AI provider instance based on current config
-  private providerFactories = {
+  public static providerFactories = {
     [Provider.OpenAI]: (config: AIConfig) =>
       // @ts-ignore
       createOpenAI({ apiKey: config.apiKey, baseURL: config.baseURL }),
@@ -637,7 +637,7 @@ class AIService {
   private getProviderInstance() {
     if (!this.config) throw new AIError("AI not configured");
     // @ts-ignore
-    const factory = this.providerFactories[this.config.provider];
+    const factory = AIService.providerFactories[this.config.provider];
     if (!factory)
       throw new AIError(`Unsupported provider: ${this.config.provider}`);
     return factory(this.config);

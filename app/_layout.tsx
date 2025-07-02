@@ -1,16 +1,18 @@
+import { useColorScheme } from "@/hooks/useColorScheme";
+import '@/polyfills';
 import {
   DarkTheme,
   DefaultTheme,
   ThemeProvider,
 } from "@react-navigation/native";
+import structuredClone from "@ungap/structured-clone";
 import { useFonts } from "expo-font";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import "react-native-reanimated";
-import { useColorScheme } from "@/hooks/useColorScheme";
-import structuredClone from "@ungap/structured-clone";
 
 if (!("structuredClone" in globalThis)) {
+  // @ts-ignore
   globalThis.structuredClone = structuredClone;
 }
 

@@ -1,15 +1,15 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useEffect, useRef, useState } from "react";
 import {
-  Alert,
-  SafeAreaView,
-  Share,
-  StatusBar,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  Modal,
-  View,
+    Alert,
+    Modal,
+    SafeAreaView,
+    Share,
+    StatusBar,
+    StyleSheet,
+    Text,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import { WebView } from "react-native-webview";
 
@@ -123,6 +123,7 @@ export default function BrowserScreen() {
     SearchSuggestion[]
   >([]);
   const [aiChatVisible, setAiChatVisible] = useState(false);
+  const [apiChatVisible, setApiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
   const [aiMessages, setAiMessages] = useState<ChatMessage[]>([]);
   const [aiConfigured, setAiConfigured] = useState(false);
@@ -1167,6 +1168,15 @@ export default function BrowserScreen() {
         disabled: !aiConfigured,
       },
       {
+        id: "ai_api_chat",
+        title: "AI API Route 聊天",
+        subtitle: aiConfigured ? "使用API Route方式的AI聊天" : "需要配置AI提供商",
+        icon: "cloud",
+        color: "#32D74B",
+        onPress: () => setApiChatVisible(true),
+        disabled: !aiConfigured,
+      },
+      {
         id: "ai_quick",
         title: "快速AI对话",
         subtitle: "基于当前页面内容的AI对话",
@@ -1579,6 +1589,18 @@ export default function BrowserScreen() {
         currentPageContent={currentPageContent}
         selectedText={selectedText}
         onSendMessage={handleSendAIMessage}
+        aiConfigured={aiConfigured}
+        onConfigureAI={handleConfigureAI}
+      />
+
+      {/* AI Chat with API Route */}
+      <AIChatWithAPIRoute
+        visible={apiChatVisible}
+        onClose={() => setApiChatVisible(false)}
+        currentPageTitle={currentTab.title}
+        currentPageUrl={currentTab.url}
+        currentPageContent={currentPageContent}
+        selectedText={selectedText}
         aiConfigured={aiConfigured}
         onConfigureAI={handleConfigureAI}
       />
