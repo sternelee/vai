@@ -55,10 +55,10 @@ class DatabaseService {
   }
 
   private async createTables(): Promise<void> {
-    console.log("Creating tables...", sqlite);
     try {
       // Create tables using raw SQL for initial setup
-      await sqlite.execute(`
+      await database.run(
+        `
         CREATE TABLE IF NOT EXISTS history (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL,
@@ -66,9 +66,10 @@ class DatabaseService {
           visited_at TEXT NOT NULL,
           favicon TEXT
         )
-      `);
+      `,
+      );
 
-      await sqlite.execute(`
+      await database.run(`
         CREATE TABLE IF NOT EXISTS bookmarks (
           id INTEGER PRIMARY KEY AUTOINCREMENT,
           url TEXT NOT NULL UNIQUE,
@@ -79,7 +80,7 @@ class DatabaseService {
         )
       `);
 
-      await sqlite.execute(`
+      await database.run(`
         CREATE TABLE IF NOT EXISTS downloads (
           id TEXT PRIMARY KEY,
           url TEXT NOT NULL,
@@ -98,7 +99,7 @@ class DatabaseService {
         )
       `);
 
-      await sqlite.execute(`
+      await database.run(`
         CREATE TABLE IF NOT EXISTS user_scripts (
           id TEXT PRIMARY KEY,
           name TEXT NOT NULL,
@@ -125,7 +126,7 @@ class DatabaseService {
       `);
 
       // Create chat-related tables
-      await sqlite.execute(`
+      await database.run(`
         CREATE TABLE IF NOT EXISTS chat_sessions (
           id TEXT PRIMARY KEY,
           title TEXT NOT NULL,
@@ -137,7 +138,7 @@ class DatabaseService {
         )
       `);
 
-      await sqlite.execute(`
+      await database.run(`
         CREATE TABLE IF NOT EXISTS chat_messages (
           id TEXT PRIMARY KEY,
           chat_session_id TEXT NOT NULL,
@@ -152,36 +153,36 @@ class DatabaseService {
       `);
 
       // Create indexes
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_history_url ON history(url)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_history_visited_at ON history(visited_at)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_bookmarks_url ON bookmarks(url)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_bookmarks_folder ON bookmarks(folder)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_downloads_status ON downloads(status)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_downloads_start_time ON downloads(start_time)`,
       );
 
       // Chat indexes
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_chat_messages_session_id ON chat_messages(chat_session_id)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_chat_sessions_is_active ON chat_sessions(is_active)`,
       );
-      await sqlite.execute(
+      await database.run(
         `CREATE INDEX IF NOT EXISTS idx_chat_sessions_updated_at ON chat_sessions(updated_at)`,
       );
     } catch (error) {
