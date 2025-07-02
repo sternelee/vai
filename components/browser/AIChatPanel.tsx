@@ -1,22 +1,21 @@
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { Ionicons } from "@expo/vector-icons";
+import { UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
-  Modal,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
-import DatabaseService from "../../services/DatabaseService";
-import type { Message } from "../../types/chat";
 
 interface AIChatPanelProps {
   visible: boolean;
@@ -25,7 +24,10 @@ interface AIChatPanelProps {
   currentPageUrl: string;
   currentPageContent: string;
   selectedText?: string;
-  onSendMessage: (message: string, context: string) => Promise<void>;
+  messages: UIMessage[];
+  isLoading: boolean;
+  onSendMessage: (message: UIMessage) => void;
+  onClearHistory: () => void;
   aiConfigured: boolean;
   onConfigureAI: () => void;
 }
@@ -37,29 +39,19 @@ export default function AIChatPanel({
   currentPageUrl,
   currentPageContent,
   selectedText,
+  messages,
+  isLoading,
   onSendMessage,
+  onClearHistory,
   aiConfigured,
   onConfigureAI,
 }: AIChatPanelProps) {
   const [inputText, setInputText] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [streamingMessageId, setStreamingMessageId] = useState<string | null>(
-    null,
-  );
-  const [messages, setMessages] = useState<Message[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const colorScheme = useColorScheme();
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
 
   const isDark = colorScheme === "dark";
-
-  // Initialize or load chat session
-  useEffect(() => {
-    if (visible && !currentSessionId) {
-      initializeChatSession();
-    }
-  }, [visible, currentPageUrl]);
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -87,25 +79,8 @@ export default function AIChatPanel({
     currentPageUrl,
   ]);
 
-  const initializeChatSession = async () => {
-    try {
-      // Create new session for current page
-      const sessionId = await DatabaseService.createChatSession(
-        currentPageTitle || "Web Page Chat",
-        currentPageUrl,
-      );
-      setCurrentSessionId(sessionId);
-
-      // Load existing messages for this session
-      const existingMessages = await DatabaseService.getChatMessages(sessionId);
-      setMessages(existingMessages);
-    } catch (error) {
-      console.error("Failed to initialize chat session:", error);
-    }
-  };
-
   const handleSendMessage = async () => {
-    if (!inputText.trim() || isLoading || !currentSessionId) return;
+    if (!inputText.trim() || isLoading) return;
 
     if (!aiConfigured) {
       Alert.alert(
@@ -119,93 +94,25 @@ export default function AIChatPanel({
       return;
     }
 
-    const messageText = inputText.trim();
-    setInputText("");
-    setIsLoading(true);
-
     try {
       // Create user message
-      const userMessage: Message = {
-        id: `user_${Date.now()}`,
+      const userMessage: UIMessage = {
+        id: Date.now().toString(),
         role: "user",
-        content: messageText,
-        createdAt: new Date(),
+        parts: [
+          {
+            type: "text",
+            text: inputText.trim(),
+          },
+        ],
       };
 
-      // Add user message to state and database
-      setMessages((prev) => [...prev, userMessage]);
-      await DatabaseService.saveChatMessage(userMessage, currentSessionId);
-
-      // Create context from current page
-      const context = `
-        Current page: ${currentPageTitle}
-        URL: ${currentPageUrl}
-        Content preview: ${currentPageContent.substring(0, 2000)}
-      `;
-
-      // Create assistant message for streaming
-      const assistantMessage: Message = {
-        id: `assistant_${Date.now()}`,
-        role: "assistant",
-        content: "",
-        createdAt: new Date(),
-      };
-
-      setMessages((prev) => [...prev, assistantMessage]);
-      setStreamingMessageId(assistantMessage.id);
-
-      // Get response stream
-      const responseStream = await onSendMessage(messageText, context);
-      const reader = responseStream.body?.getReader();
-      let accumulatedResponse = "";
-
-      try {
-        while (true) {
-          // @ts-ignore
-          const { done, value } = await reader?.read();
-          if (done) break;
-
-          accumulatedResponse += value;
-
-          // Update the streaming message
-          setMessages((prev) =>
-            prev.map((msg) =>
-              msg.id === assistantMessage.id
-                ? { ...msg, content: accumulatedResponse }
-                : msg,
-            ),
-          );
-        }
-
-        // Save final assistant message to database
-        const finalAssistantMessage: Message = {
-          ...assistantMessage,
-          content: accumulatedResponse,
-        };
-        await DatabaseService.saveChatMessage(
-          finalAssistantMessage,
-          currentSessionId,
-        );
-      } finally {
-        reader?.releaseLock();
-        setStreamingMessageId(null);
-      }
+      // Send message to parent component
+      onSendMessage(userMessage);
+      setInputText("");
     } catch (error) {
       console.error("Failed to send message:", error);
       Alert.alert("Error", "Failed to send message. Please try again.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleClearHistory = async () => {
-    if (!currentSessionId) return;
-
-    try {
-      await DatabaseService.clearChatHistory(currentSessionId);
-      setMessages([]);
-    } catch (error) {
-      console.error("Failed to clear chat history:", error);
     }
   };
 
@@ -244,7 +151,11 @@ export default function AIChatPanel({
     }, 100);
   };
 
-  const formatTimestamp = (timestamp: Date) => {
+  const formatTimestamp = (timestamp?: Date) => {
+    if (!timestamp) return new Date().toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
     return timestamp.toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
@@ -327,12 +238,19 @@ export default function AIChatPanel({
     return <Markdown style={markdownStyles}>{content}</Markdown>;
   };
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const content =
-      typeof item.content === "string"
-        ? item.content
-        : JSON.stringify(item.content);
-    const isStreaming = streamingMessageId === item.id;
+  const getMessageContent = (message: UIMessage): string => {
+    if (!message.parts || message.parts.length === 0) {
+      return "";
+    }
+
+    return message.parts
+      .filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join("\n");
+  };
+
+  const renderMessage = ({ item }: { item: UIMessage }) => {
+    const content = getMessageContent(item);
 
     return (
       <View
@@ -363,16 +281,11 @@ export default function AIChatPanel({
               {renderMarkdownContent(content)}
             </View>
           )}
-          {isStreaming && (
-            <View style={styles.streamingIndicator}>
-              <ActivityIndicator size="small" color="#007AFF" />
-            </View>
-          )}
         </View>
         <Text
           style={[styles.timestamp, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
         >
-          {formatTimestamp(item.createdAt || new Date())}
+          {formatTimestamp()}
         </Text>
       </View>
     );
@@ -454,7 +367,7 @@ export default function AIChatPanel({
             <View style={styles.headerRight}>
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={handleClearHistory}
+                onPress={onClearHistory}
                 disabled={messages.length === 0}
               >
                 <Ionicons
@@ -504,6 +417,8 @@ export default function AIChatPanel({
             />
           )}
         </View>
+
+
 
         {/* Input Area */}
         <View
@@ -663,14 +578,36 @@ const styles = StyleSheet.create({
   markdownContainer: {
     flex: 1,
   },
-  streamingIndicator: {
-    marginTop: 8,
-    alignItems: "center",
-  },
   timestamp: {
     fontSize: 12,
     marginTop: 4,
     marginHorizontal: 16,
+  },
+  errorContainer: {
+    backgroundColor: "#FF3B30",
+    margin: 16,
+    padding: 12,
+    borderRadius: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+  },
+  errorText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    flex: 1,
+  },
+  retryButton: {
+    backgroundColor: "#FFFFFF",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 4,
+    marginLeft: 8,
+  },
+  retryButtonText: {
+    color: "#FF3B30",
+    fontSize: 14,
+    fontWeight: "600",
   },
   inputContainer: {
     paddingHorizontal: 20,

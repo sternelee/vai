@@ -1,4 +1,6 @@
+import { useChat } from "@ai-sdk/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { DefaultChatTransport, UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -12,8 +14,6 @@ import {
   View,
 } from "react-native";
 import { WebView } from "react-native-webview";
-import { UIMessage, DefaultChatTransport } from "ai";
-import { useChat } from "@ai-sdk/react";
 
 // Components
 import AddressBar from "@/components/browser/AddressBar";
@@ -129,7 +129,6 @@ export default function BrowserScreen() {
   const [aiChatVisible, setAiChatVisible] = useState(false);
   const [apiChatVisible, setApiChatVisible] = useState(false);
   const [aiContext, setAIContext] = useState<any>(null);
-  const [aiMessages, setAiMessages] = useState<UIMessage[]>([]);
   const [aiConfigured, setAiConfigured] = useState(false);
   const [performanceStats, setPerformanceStats] = useState<any>(null);
   const [selectedText, setSelectedText] = useState<string>("");
@@ -739,7 +738,6 @@ export default function BrowserScreen() {
         },
       ],
     };
-    setAiMessages((prev) => [...prev, userMessage]);
 
     try {
       if (!aiConfigured) {
@@ -757,9 +755,6 @@ export default function BrowserScreen() {
     } catch (error) {
       console.error("AI chat error:", error);
 
-      // Remove user message and add error message
-      setAiMessages((prev) => prev.slice(0, -1));
-
       const errorMessage: UIMessage = {
         id: (Date.now() + 1).toString(),
         role: "assistant",
@@ -771,14 +766,12 @@ export default function BrowserScreen() {
         ],
       };
 
-      setAiMessages((prev) => [...prev, errorMessage]);
-
       throw error;
     }
   };
 
   const handleClearAIHistory = () => {
-    setAiMessages([]);
+    setMessages([]);
   };
 
   const handleConfigureAI = () => {
@@ -1658,7 +1651,10 @@ export default function BrowserScreen() {
         currentPageUrl={currentTab.url}
         currentPageContent={currentPageContent}
         selectedText={selectedText}
-        onSendMessage={handleSendAIMessage}
+        messages={messages}
+        isLoading={false}
+        onSendMessage={sendMessage}
+        onClearHistory={handleClearAIHistory}
         aiConfigured={aiConfigured}
         onConfigureAI={handleConfigureAI}
       />
