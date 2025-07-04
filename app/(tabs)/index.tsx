@@ -1,6 +1,4 @@
-import { useChat } from "@ai-sdk/react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { DefaultChatTransport, UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import {
   Alert,
@@ -700,79 +698,9 @@ export default function BrowserScreen() {
     }
   };
 
-  const {
-    messages,
-    error,
-    // setMessages,
-    sendMessage,
-    regenerate,
-    resumeStream,
-    addToolResult,
-    status,
-  } = useChat<UIMessage>({
-    transport: new DefaultChatTransport({
-      // @ts-ignore
-      fetch: aiService.streamFetch,
-      body: {
-        // config: config, // Pass AI config to API route
-      },
-    }),
-    onError: (error) => {
-      console.error("Chat error:", error);
-      Alert.alert("Chat Error", error.message);
-    },
-    onFinish: (message) => {
-      console.log("Chat finished:", message); // Debug log
-    },
-  });
 
-  const handleSendAIMessage = async (message: string, context: string) => {
-    // Add user message
-    const userMessage: UIMessage = {
-      id: Date.now().toString(),
-      role: "user",
-      parts: [
-        {
-          type: "text",
-          text: message,
-        },
-      ],
-    };
 
-    try {
-      if (!aiConfigured) {
-        throw new Error("AI not configured");
-      }
-      sendMessage({
-        role: "user",
-        parts: [
-          {
-            type: "text",
-            text: message,
-          },
-        ],
-      });
-    } catch (error) {
-      console.error("AI chat error:", error);
 
-      const errorMessage: UIMessage = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        parts: [
-          {
-            type: "text",
-            text: "Sorry, I encountered an error. Please make sure the AI service is properly configured with a valid API key.",
-          },
-        ],
-      };
-
-      throw error;
-    }
-  };
-
-  const handleClearAIHistory = () => {
-    setMessages([]);
-  };
 
   const handleConfigureAI = () => {
     Alert.alert(
@@ -1651,10 +1579,6 @@ export default function BrowserScreen() {
         currentPageUrl={currentTab.url}
         currentPageContent={currentPageContent}
         selectedText={selectedText}
-        messages={messages}
-        isLoading={false}
-        onSendMessage={sendMessage}
-        onClearHistory={handleClearAIHistory}
         aiConfigured={aiConfigured}
         onConfigureAI={handleConfigureAI}
       />

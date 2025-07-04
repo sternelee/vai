@@ -655,26 +655,40 @@ class AIService {
       const provider = this.getProviderInstance();
       const model = provider(this.config.model);
 
-      const messages = [];
+      const messages: UIMessage[] = [];
 
       if (context) {
         messages.push({
+          id: Date.now().toString(),
           role: "system",
-          content: `Context: ${context}`,
+          parts: [
+            {
+              type: "text",
+              text: `Context: ${context}`,
+            },
+          ],
         });
       }
 
       messages.push({
+        id: Date.now().toString(),
         role: "user",
-        content: prompt,
+        parts: [
+          {
+            type: "text",
+            text: prompt,
+          },
+        ],
       });
 
       // Get available MCP tools
       const mcpTools = await mcpService.getAvailableTools();
 
+      const newMessages = convertToModelMessages(messages);
+
       const result = await generateText({
         model,
-        messages: convertToModelMessages(messages as unknown as UIMessage[]),
+        messages: newMessages,
         tools: mcpTools,
         temperature: 0.7,
       });
@@ -738,7 +752,7 @@ class AIService {
 
     return {
       model: this.getProviderInstance()(this.config.model),
-      messages: convertToModelMessages(messages as unknown as UIMessage[]),
+      messages: convertToModelMessages(messages),
       tools: hasMCPTools ? mcpTools : undefined,
       maxSteps: hasMCPTools ? 5 : undefined,
       maxTokens: 1000,
@@ -767,6 +781,7 @@ class AIService {
       context?: string;
       conversationHistory: UIMessage[];
     };
+    console.log("AI message:", message);
     try {
       const streamConfig = await this.prepareStreamConfig(
         message,

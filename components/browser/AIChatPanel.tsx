@@ -1,19 +1,21 @@
 import { useColorScheme } from "@/hooks/useColorScheme";
+import { aiService } from "@/services/AIService";
+import { useChat } from "@ai-sdk/react";
 import { Ionicons } from "@expo/vector-icons";
-import { UIMessage } from "ai";
+import { DefaultChatTransport, UIMessage } from "ai";
 import { useEffect, useRef, useState } from "react";
 import {
-  ActivityIndicator,
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  StyleSheet,
-  Text,
-  TextInput,
-  TouchableOpacity,
-  View,
+    ActivityIndicator,
+    Alert,
+    FlatList,
+    KeyboardAvoidingView,
+    Modal,
+    Platform,
+    StyleSheet,
+    Text,
+    TextInput,
+    TouchableOpacity,
+    View,
 } from "react-native";
 import Markdown from "react-native-markdown-display";
 
@@ -24,10 +26,6 @@ interface AIChatPanelProps {
   currentPageUrl: string;
   currentPageContent: string;
   selectedText?: string;
-  messages: UIMessage[];
-  isLoading: boolean;
-  onSendMessage: (message: UIMessage) => void;
-  onClearHistory: () => void;
   aiConfigured: boolean;
   onConfigureAI: () => void;
 }
@@ -39,10 +37,6 @@ export default function AIChatPanel({
   currentPageUrl,
   currentPageContent,
   selectedText,
-  messages,
-  isLoading,
-  onSendMessage,
-  onClearHistory,
   aiConfigured,
   onConfigureAI,
 }: AIChatPanelProps) {
@@ -52,6 +46,39 @@ export default function AIChatPanel({
   const inputRef = useRef<TextInput>(null);
 
   const isDark = colorScheme === "dark";
+
+  // Use useChat hook directly in the component
+  const {
+    messages,
+    error,
+    setMessages,
+    sendMessage,
+    regenerate,
+    status,
+    stop,
+  } = useChat<UIMessage>({
+    transport: new DefaultChatTransport({
+      // @ts-ignore
+      fetch: aiService.streamFetch,
+      body: {
+        // Add page context to the request
+        pageContext: {
+          title: currentPageTitle,
+          url: currentPageUrl,
+          content: currentPageContent,
+        },
+      },
+    }),
+    onError: (error) => {
+      console.error("Chat error:", error);
+      Alert.alert("Chat Error", error.message);
+    },
+    onFinish: (message) => {
+      console.log("Chat finished:", message);
+    },
+  });
+
+  const isLoading = status === "submitted" || status === "streaming";
 
   // Auto-scroll to bottom when new messages are added
   useEffect(() => {
@@ -95,25 +122,24 @@ export default function AIChatPanel({
     }
 
     try {
-      // Create user message
-      const userMessage: UIMessage = {
-        id: Date.now().toString(),
+      // Use sendMessage function from useChat
+      sendMessage({
         role: "user",
-        parts: [
-          {
-            type: "text",
-            text: inputText.trim(),
-          },
-        ],
-      };
-
-      // Send message to parent component
-      onSendMessage(userMessage);
+        parts: [{ type: "text", text: inputText.trim() }],
+      });
       setInputText("");
     } catch (error) {
       console.error("Failed to send message:", error);
       Alert.alert("Error", "Failed to send message. Please try again.");
     }
+  };
+
+  const handleClearHistory = () => {
+    setMessages([]);
+  };
+
+  const handleStop = () => {
+    stop();
   };
 
   const quickActions = [
@@ -198,7 +224,7 @@ export default function AIChatPanel({
         textDecorationLine: "underline" as const,
       },
       blockquote: {
-        backgroundColor: isDark ? "#3A3A3C" : "#F2F2F7",
+        backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
         borderLeftWidth: 4,
         borderLeftColor: "#007AFF",
         paddingLeft: 12,
@@ -235,10 +261,15 @@ export default function AIChatPanel({
       },
     };
 
-    return <Markdown style={markdownStyles}>{content}</Markdown>;
+    return (
+      <Markdown style={markdownStyles} mergeStyle={true}>
+        {content}
+      </Markdown>
+    );
   };
 
   const getMessageContent = (message: UIMessage): string => {
+    // Extract text from parts - UIMessage uses parts structure
     if (!message.parts || message.parts.length === 0) {
       return "";
     }
@@ -330,6 +361,22 @@ export default function AIChatPanel({
     </View>
   );
 
+  const renderErrorState = () => (
+    <View style={styles.errorContainer}>
+      <Text style={[styles.errorText, { color: isDark ? "#FF453A" : "#FF3B30" }]}>
+        {error?.message || "An error occurred"}
+      </Text>
+      <TouchableOpacity
+        style={[styles.retryButton, { backgroundColor: "#007AFF" }]}
+        onPress={() => regenerate()}
+      >
+        <Text style={[styles.retryButtonText, { color: "#FFFFFF" }]}>
+          Retry
+        </Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
     <Modal
       visible={visible}
@@ -363,11 +410,28 @@ export default function AIChatPanel({
               >
                 AI Assistant
               </Text>
+              {/* Status indicator */}
+              {status === "streaming" && (
+                <ActivityIndicator size="small" color="#007AFF" />
+              )}
             </View>
             <View style={styles.headerRight}>
+              {/* Stop button during streaming */}
+              {isLoading && (
+                <TouchableOpacity
+                  style={styles.headerButton}
+                  onPress={handleStop}
+                >
+                  <Ionicons
+                    name="stop"
+                    size={20}
+                    color={isDark ? "#FFFFFF" : "#000000"}
+                  />
+                </TouchableOpacity>
+              )}
               <TouchableOpacity
                 style={styles.headerButton}
-                onPress={onClearHistory}
+                onPress={handleClearHistory}
                 disabled={messages.length === 0}
               >
                 <Ionicons
@@ -403,7 +467,9 @@ export default function AIChatPanel({
 
         {/* Messages or Quick Actions */}
         <View style={styles.content}>
-          {messages.length === 0 ? (
+          {error ? (
+            renderErrorState()
+          ) : messages.length === 0 ? (
             renderQuickActions()
           ) : (
             <FlatList
@@ -417,8 +483,6 @@ export default function AIChatPanel({
             />
           )}
         </View>
-
-
 
         {/* Input Area */}
         <View
@@ -445,7 +509,7 @@ export default function AIChatPanel({
               placeholderTextColor={isDark ? "#8E8E93" : "#6B6B6B"}
               multiline
               maxLength={1000}
-              editable={!isLoading}
+              editable={!isLoading && status !== "error"}
             />
             <TouchableOpacity
               style={[
@@ -490,32 +554,32 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   header: {
-    paddingHorizontal: 20,
+    paddingHorizontal: 16,
     paddingBottom: 16,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomWidth: 1,
   },
   headerContent: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
+    justifyContent: "space-between",
     marginTop: 16,
   },
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   headerTitle: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: "600",
-    marginLeft: 8,
   },
   headerRight: {
     flexDirection: "row",
     alignItems: "center",
+    gap: 8,
   },
   headerButton: {
-    padding: 4,
-    marginLeft: 12,
+    padding: 8,
   },
   pageContext: {
     fontSize: 14,
@@ -523,38 +587,13 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-  },
-  quickActionsContainer: {
-    padding: 20,
-  },
-  quickActionsTitle: {
-    fontSize: 18,
-    fontWeight: "600",
-    marginBottom: 16,
-  },
-  quickActionsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
-  },
-  quickActionButton: {
-    width: "48%",
     padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  quickActionText: {
-    fontSize: 14,
-    fontWeight: "500",
-    marginTop: 8,
   },
   messagesList: {
     flex: 1,
   },
   messagesContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
+    paddingBottom: 16,
   },
   messageContainer: {
     marginBottom: 16,
@@ -567,72 +606,98 @@ const styles = StyleSheet.create({
   },
   messageBubble: {
     maxWidth: "80%",
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderRadius: 18,
+    padding: 12,
+    borderRadius: 16,
   },
   messageText: {
     fontSize: 16,
     lineHeight: 22,
   },
   markdownContainer: {
+    minWidth: 0,
     flex: 1,
   },
   timestamp: {
     fontSize: 12,
     marginTop: 4,
-    marginHorizontal: 16,
+    marginHorizontal: 8,
+  },
+  quickActionsContainer: {
+    flex: 1,
+    justifyContent: "center",
+  },
+  quickActionsTitle: {
+    fontSize: 20,
+    fontWeight: "600",
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  quickActionsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "center",
+    gap: 16,
+  },
+  quickActionButton: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 80,
+    height: 80,
+    borderRadius: 16,
+    padding: 12,
+  },
+  quickActionText: {
+    fontSize: 12,
+    fontWeight: "500",
+    marginTop: 4,
+    textAlign: "center",
   },
   errorContainer: {
-    backgroundColor: "#FF3B30",
-    margin: 16,
-    padding: 12,
-    borderRadius: 8,
-    flexDirection: "row",
+    flex: 1,
+    justifyContent: "center",
     alignItems: "center",
-    justifyContent: "space-between",
+    padding: 24,
   },
   errorText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    flex: 1,
+    fontSize: 16,
+    textAlign: "center",
+    marginBottom: 16,
   },
   retryButton: {
-    backgroundColor: "#FFFFFF",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 4,
-    marginLeft: 8,
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 8,
   },
   retryButtonText: {
-    color: "#FF3B30",
-    fontSize: 14,
+    fontSize: 16,
     fontWeight: "600",
   },
   inputContainer: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    borderTopWidth: 1,
   },
   inputWrapper: {
     flexDirection: "row",
     alignItems: "flex-end",
     borderRadius: 20,
-    paddingHorizontal: 16,
+    paddingHorizontal: 12,
     paddingVertical: 8,
   },
   textInput: {
     flex: 1,
     fontSize: 16,
+    lineHeight: 20,
+    minHeight: 40,
     maxHeight: 100,
-    paddingVertical: 8,
+    textAlignVertical: "center",
   },
   sendButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    justifyContent: "center",
     alignItems: "center",
+    justifyContent: "center",
     marginLeft: 8,
   },
 });
