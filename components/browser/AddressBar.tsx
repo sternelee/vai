@@ -238,49 +238,49 @@ export default function AddressBar({
         ]}
       >
         {/* Arc-style navigation controls */}
-        <View style={styles.navigationControls}>
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              {
-                backgroundColor: canGoBack
-                  ? themeColors.interactive.hover
-                  : "transparent",
-                opacity: canGoBack ? 1 : 0.4,
-              },
-            ]}
-            onPress={onGoBack}
-            disabled={!canGoBack}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="chevron-back"
-              size={20}
-              color={themeColors.text.primary}
-            />
-          </TouchableOpacity>
-
-          <TouchableOpacity
-            style={[
-              styles.navButton,
-              {
-                backgroundColor: canGoForward
-                  ? themeColors.interactive.hover
-                  : "transparent",
-                opacity: canGoForward ? 1 : 0.4,
-              },
-            ]}
-            onPress={onGoForward}
-            disabled={!canGoForward}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="chevron-forward"
-              size={20}
-              color={themeColors.text.primary}
-            />
-          </TouchableOpacity>
-        </View>
+        {/* <View style={styles.navigationControls}> */}
+        {/*   <TouchableOpacity */}
+        {/*     style={[ */}
+        {/*       styles.navButton, */}
+        {/*       { */}
+        {/*         backgroundColor: canGoBack */}
+        {/*           ? themeColors.interactive.hover */}
+        {/*           : "transparent", */}
+        {/*         opacity: canGoBack ? 1 : 0.4, */}
+        {/*       }, */}
+        {/*     ]} */}
+        {/*     onPress={onGoBack} */}
+        {/*     disabled={!canGoBack} */}
+        {/*     activeOpacity={0.7} */}
+        {/*   > */}
+        {/*     <Ionicons */}
+        {/*       name="chevron-back" */}
+        {/*       size={20} */}
+        {/*       color={themeColors.text.primary} */}
+        {/*     /> */}
+        {/*   </TouchableOpacity> */}
+        {/**/}
+        {/*   <TouchableOpacity */}
+        {/*     style={[ */}
+        {/*       styles.navButton, */}
+        {/*       { */}
+        {/*         backgroundColor: canGoForward */}
+        {/*           ? themeColors.interactive.hover */}
+        {/*           : "transparent", */}
+        {/*         opacity: canGoForward ? 1 : 0.4, */}
+        {/*       }, */}
+        {/*     ]} */}
+        {/*     onPress={onGoForward} */}
+        {/*     disabled={!canGoForward} */}
+        {/*     activeOpacity={0.7} */}
+        {/*   > */}
+        {/*     <Ionicons */}
+        {/*       name="chevron-forward" */}
+        {/*       size={20} */}
+        {/*       color={themeColors.text.primary} */}
+        {/*     /> */}
+        {/*   </TouchableOpacity> */}
+        {/* </View> */}
 
         {/* Arc-style address input container */}
         <View
