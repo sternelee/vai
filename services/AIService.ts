@@ -7,7 +7,6 @@ import { createMistral } from "@ai-sdk/mistral";
 import { createOpenAI } from "@ai-sdk/openai";
 import { createXai } from "@ai-sdk/xai";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
-import { createZhipu } from "zhipu-ai-provider";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import {
   convertToModelMessages,
@@ -16,7 +15,9 @@ import {
   streamText,
   UIMessage,
 } from "ai";
+import { createZhipu } from "zhipu-ai-provider";
 import { z } from "zod";
+import { builtinToolsService } from "./BuiltinToolsService";
 import { mcpService } from "./MCPService";
 
 class AIError extends Error {
@@ -681,15 +682,17 @@ class AIService {
         ],
       });
 
-      // Get available MCP tools
+      // Get available tools (both MCP and builtin)
       const mcpTools = await mcpService.getAvailableTools();
+      const builtinTools = await builtinToolsService.getAvailableTools();
+      const allTools = { ...mcpTools, ...builtinTools };
 
       const newMessages = convertToModelMessages(messages);
 
       const result = await generateText({
         model,
         messages: newMessages,
-        tools: mcpTools,
+        tools: Object.keys(allTools).length > 0 ? allTools : undefined,
         temperature: 0.7,
       });
 
@@ -748,20 +751,22 @@ class AIService {
     });
 
     const mcpTools = await mcpService.getAvailableTools();
-    const hasMCPTools = Object.keys(mcpTools).length > 0;
+    const builtinTools = await builtinToolsService.getAvailableTools();
+    const allTools = { ...mcpTools, ...builtinTools };
+    const hasTools = Object.keys(allTools).length > 0;
 
     return {
       model: this.getProviderInstance()(this.config.model),
       messages: convertToModelMessages(messages),
-      tools: hasMCPTools ? mcpTools : undefined,
-      maxSteps: hasMCPTools ? 5 : undefined,
+      tools: hasTools ? allTools : undefined,
+      maxSteps: hasTools ? 5 : undefined,
       maxTokens: 1000,
       temperature: 0.7,
-      onStepFinish: hasMCPTools
+      onStepFinish: hasTools
         ? async ({ toolCalls }: any) => {
             if (toolCalls && toolCalls.length > 0) {
               console.log(
-                "MCP tools used:",
+                "Tools used:",
                 toolCalls.map((tc: any) => tc.toolName),
               );
             }

@@ -460,28 +460,28 @@ export default function AddressBar({
           )}
 
           {/* AI toggle button */}
-          <TouchableOpacity
-            style={[
-              styles.aiButton,
-              {
-                backgroundColor: aiEnabled
-                  ? isIncognito
-                    ? ArcTheme.colors.accent
-                    : ArcTheme.colors.primary
-                  : "transparent",
-                borderColor: aiEnabled ? "transparent" : themeColors.border,
-                borderWidth: aiEnabled ? 0 : 1,
-              },
-            ]}
-            onPress={onToggleAI}
-            activeOpacity={0.7}
-          >
-            <Ionicons
-              name="sparkles"
-              size={18}
-              color={aiEnabled ? "#FFFFFF" : themeColors.text.secondary}
-            />
-          </TouchableOpacity>
+          {/* <TouchableOpacity */}
+          {/*   style={[ */}
+          {/*     styles.aiButton, */}
+          {/*     { */}
+          {/*       backgroundColor: aiEnabled */}
+          {/*         ? isIncognito */}
+          {/*           ? ArcTheme.colors.accent */}
+          {/*           : ArcTheme.colors.primary */}
+          {/*         : "transparent", */}
+          {/*       borderColor: aiEnabled ? "transparent" : themeColors.border, */}
+          {/*       borderWidth: aiEnabled ? 0 : 1, */}
+          {/*     }, */}
+          {/*   ]} */}
+          {/*   onPress={onToggleAI} */}
+          {/*   activeOpacity={0.7} */}
+          {/* > */}
+          {/*   <Ionicons */}
+          {/*     name="sparkles" */}
+          {/*     size={18} */}
+          {/*     color={aiEnabled ? "#FFFFFF" : themeColors.text.secondary} */}
+          {/*   /> */}
+          {/* </TouchableOpacity> */}
         </View>
       </View>
 

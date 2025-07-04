@@ -16,10 +16,10 @@ import { WebView } from "react-native-webview";
 // Components
 import AddressBar from "@/components/browser/AddressBar";
 import AIChatPanel from "@/components/browser/AIChatPanel";
-import AIChatWithAPIRoute from "@/components/browser/AIChatWithAPIRoute";
 import BookmarkManager from "@/components/browser/BookmarkManager";
 import BottomNavigationBar from "@/components/browser/BottomNavigationBar";
 import BrowserWebView from "@/components/browser/BrowserWebView";
+import BuiltinToolsManager from "@/components/browser/BuiltinToolsManager";
 import DownloadManager from "@/components/browser/DownloadManager";
 import HistoryManager from "@/components/browser/HistoryManager";
 import HomePage from "@/components/browser/HomePage";
@@ -31,6 +31,7 @@ import UserScriptManager from "@/components/browser/UserScriptManager";
 
 // Services
 import { aiService } from "@/services/AIService";
+import { builtinToolsService } from "@/services/BuiltinToolsService";
 import databaseService from "@/services/DatabaseService";
 import { downloadService } from "@/services/DownloadService";
 import { homePageService } from "@/services/HomePageService";
@@ -149,6 +150,7 @@ export default function BrowserScreen() {
   const [showUserScripts, setShowUserScripts] = useState(false);
   const [showResourceSniffer, setShowResourceSniffer] = useState(false);
   const [showToolsMenu, setShowToolsMenu] = useState(false);
+  const [showBuiltinTools, setShowBuiltinTools] = useState(false);
   const [downloads, setDownloads] = useState<DownloadItem[]>([]);
   const [pageResources, setPageResources] = useState<ResourceItem[]>([]);
 
@@ -211,6 +213,7 @@ export default function BrowserScreen() {
       await databaseService.initialize();
       await userScriptService.initialize();
       await mcpService.initialize();
+      await builtinToolsService.initialize();
 
       // Performance monitoring
       performanceService.startMonitoring();
@@ -698,10 +701,6 @@ export default function BrowserScreen() {
     }
   };
 
-
-
-
-
   const handleConfigureAI = () => {
     Alert.alert(
       "Configure AI",
@@ -1063,6 +1062,7 @@ export default function BrowserScreen() {
   const getToolsMenuItems = () => {
     const mcpStats = mcpService.getStatistics();
     const scriptStats = userScriptService.getScriptStats();
+    const builtinToolsStats = builtinToolsService.getStatistics();
 
     return [
       {
@@ -1074,26 +1074,6 @@ export default function BrowserScreen() {
         onPress: () => setAiChatVisible(true),
         disabled: !aiConfigured,
       },
-      // {
-      //   id: "ai_api_chat",
-      //   title: "AI API Route 聊天",
-      //   subtitle: aiConfigured
-      //     ? "使用API Route方式的AI聊天"
-      //     : "需要配置AI提供商",
-      //   icon: "cloud",
-      //   color: "#32D74B",
-      //   onPress: () => setApiChatVisible(true),
-      //   disabled: !aiConfigured,
-      // },
-      // {
-      //   id: "test_api",
-      //   title: "测试 API Route",
-      //   subtitle: "调试API Route连接",
-      //   icon: "bug",
-      //   color: "#FF3B30",
-      //   onPress: testAPIRoute,
-      //   disabled: !aiConfigured,
-      // },
       {
         id: "ai_quick",
         title: "快速AI对话",
@@ -1102,6 +1082,17 @@ export default function BrowserScreen() {
         color: "#5856D6",
         onPress: handleQuickAIChat,
         disabled: !aiConfigured,
+      },
+      {
+        id: "tools_builtin",
+        title: "内置工具",
+        subtitle: `${builtinToolsStats.configuredTools} 个工具已配置`,
+        icon: "construct",
+        color: "#FF6B35",
+        onPress: () => setShowBuiltinTools(true),
+        badge: builtinToolsStats.configuredTools > 0 
+          ? String(builtinToolsStats.configuredTools)
+          : undefined,
       },
       {
         id: "tools_scripts",
@@ -1584,16 +1575,16 @@ export default function BrowserScreen() {
       />
 
       {/* AI Chat with API Route */}
-      <AIChatWithAPIRoute
-        visible={apiChatVisible}
-        onClose={() => setApiChatVisible(false)}
-        currentPageTitle={currentTab.title}
-        currentPageUrl={currentTab.url}
-        currentPageContent={currentPageContent}
-        selectedText={selectedText}
-        aiConfigured={aiConfigured}
-        onConfigureAI={handleConfigureAI}
-      />
+      {/* <AIChatWithAPIRoute */}
+      {/*   visible={apiChatVisible} */}
+      {/*   onClose={() => setApiChatVisible(false)} */}
+      {/*   currentPageTitle={currentTab.title} */}
+      {/*   currentPageUrl={currentTab.url} */}
+      {/*   currentPageContent={currentPageContent} */}
+      {/*   selectedText={selectedText} */}
+      {/*   aiConfigured={aiConfigured} */}
+      {/*   onConfigureAI={handleConfigureAI} */}
+      {/* /> */}
 
       {/* Tab Manager Modal */}
       <Modal
@@ -1657,6 +1648,12 @@ export default function BrowserScreen() {
         currentPageTitle={currentTab.title}
         onExtractResources={handleExtractResources}
         onDownloadResource={handleDownloadResource}
+      />
+
+      {/* Builtin Tools Manager Modal */}
+      <BuiltinToolsManager
+        visible={showBuiltinTools}
+        onClose={() => setShowBuiltinTools(false)}
       />
     </SafeAreaView>
   );
