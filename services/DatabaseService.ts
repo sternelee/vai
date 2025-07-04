@@ -1,14 +1,14 @@
 import { and, count, desc, eq, sql } from "drizzle-orm";
-import type { ChatSessionInfo, Message } from "../types/chat";
-import { database, sqlite } from "../db/drizzle";
+import { database } from "../db/drizzle";
 import {
-  bookmarks,
-  chatMessages,
-  chatSessions,
-  downloads,
-  history,
-  userScripts,
+    bookmarks,
+    chatMessages,
+    chatSessions,
+    downloads,
+    history,
+    userScripts,
 } from "../db/schema";
+import type { ChatSessionInfo, Message } from "../types/chat";
 
 // Legacy interfaces for backward compatibility
 export interface HistoryItem {
@@ -228,17 +228,24 @@ class DatabaseService {
       }
 
       // Keep only the last 1000 history items
-      const oldestItems = await database
-        .select({ id: history.id })
-        .from(history)
-        .orderBy(desc(history.visitedAt))
-        .offset(1000);
+      const totalCount = await database
+        .select({ count: count() })
+        .from(history);
 
-      if (oldestItems.length > 0) {
-        const idsToDelete = oldestItems.map((item) => item.id);
-        await database
-          .delete(history)
-          .where(sql`id NOT IN (${sql.join(idsToDelete)})`);
+      if (totalCount[0]?.count > 1000) {
+        // Get IDs of items to keep (latest 1000)
+        const itemsToKeep = await database
+          .select({ id: history.id })
+          .from(history)
+          .orderBy(desc(history.visitedAt))
+          .limit(1000);
+
+        if (itemsToKeep.length > 0) {
+          const idsToKeep = itemsToKeep.map((item) => item.id);
+          await database
+            .delete(history)
+            .where(sql`id NOT IN (${sql.join(idsToKeep.map(id => sql`${id}`))})`);
+        }
       }
     } catch (error) {
       console.error("Failed to add history item:", error);
