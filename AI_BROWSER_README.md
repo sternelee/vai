@@ -1,6 +1,6 @@
 # Vai Browser - AI-Powered Mobile Browser
 
-VaiBrowser is an intelligent mobile browser that combines the lightweight efficiency of Via Browser with advanced AI capabilities and cutting-edge features including performance optimization, user script support, and **Model Context Protocol (MCP) tools integration**.
+Vai Browser is an intelligent mobile browser that combines the lightweight efficiency of Via Browser with advanced AI capabilities and cutting-edge features including performance optimization, user script support, and **Model Context Protocol (MCP) tools integration**.
 
 ## 🚀 Core Features
 

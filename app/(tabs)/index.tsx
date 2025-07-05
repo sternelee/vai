@@ -295,7 +295,7 @@ export default function BrowserScreen() {
     return {
       id,
       url: tabUrl,
-      title: isHomePage ? "VaiBrowser 主页" : "新标签页",
+      title: isHomePage ? "Vai Browser 主页" : "新标签页",
       isLoading: false,
       canGoBack: false,
       canGoForward: false,
@@ -1002,7 +1002,7 @@ export default function BrowserScreen() {
         url: homePageUrl,
         isLoading: false,
         progress: 0,
-        title: "VaiBrowser 主页",
+        title: "Vai Browser 主页",
       });
     }
   };

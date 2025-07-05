@@ -337,7 +337,7 @@ export default function UserScriptManager({
               setEditingScript(`// ==UserScript==
 // @name         Password Generator
 // @description  Generate secure passwords for forms
-// @author       VaiBrowser
+// @author       Vai Browser
 // @version      1.0.0
 // @include      *
 // @grant        none
@@ -386,7 +386,7 @@ export default function UserScriptManager({
               setEditingScript(`// ==UserScript==
 // @name         Image Zoom
 // @description  Click to zoom images on any website
-// @author       VaiBrowser
+// @author       Vai Browser
 // @version      1.0.0
 // @include      *
 // @grant        none
@@ -798,4 +798,3 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
 });
-

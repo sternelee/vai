@@ -240,7 +240,7 @@ export default function BrowserWebView({
             window.ReactNativeWebView.postMessage(JSON.stringify({
               type: 'home_page_loaded',
               url: '${data.baseUrl}',
-              title: 'VaiBrowser - Home'
+              title: 'Vai Browser - Home'
             }));
 
             true;

@@ -453,7 +453,7 @@ export default function HomePage({
         <Text
           style={[styles.footerText, { color: isDark ? "#8E8E93" : "#6B6B6B" }]}
         >
-          VaiBrowser - 让浏览更智能
+          Vai Browser - 让浏览更智能
         </Text>
       </View>
     </ScrollView>

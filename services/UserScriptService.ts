@@ -81,14 +81,14 @@ class UserScriptService {
         id: "builtin-ad-blocker",
         name: "Simple Ad Blocker",
         description: "Blocks common advertisement elements",
-        author: "VaiBrowser",
+        author: "Vai Browser",
         version: "1.0.0",
         enabled: true,
         code: `
 // ==UserScript==
 // @name         Simple Ad Blocker
 // @description  Blocks common advertisement elements
-// @author       VaiBrowser
+// @author       Vai Browser
 // @version      1.0.0
 // @include      *
 // @grant        none
@@ -155,14 +155,14 @@ class UserScriptService {
         id: "builtin-dark-mode",
         name: "Dark Mode Toggle",
         description: "Adds dark mode support to websites",
-        author: "VaiBrowser",
+        author: "Vai Browser",
         version: "1.0.0",
         enabled: false,
         code: `
 // ==UserScript==
 // @name         Dark Mode Toggle
 // @description  Adds dark mode support to websites
-// @author       VaiBrowser
+// @author       Vai Browser
 // @version      1.0.0
 // @include      *
 // @grant        none
@@ -239,14 +239,14 @@ class UserScriptService {
         id: "builtin-auto-scroll",
         name: "Auto Scroll",
         description: "Automatically scrolls page content",
-        author: "VaiBrowser",
+        author: "Vai Browser",
         version: "1.0.0",
         enabled: false,
         code: `
 // ==UserScript==
 // @name         Auto Scroll
 // @description  Automatically scrolls page content
-// @author       VaiBrowser
+// @author       Vai Browser
 // @version      1.0.0
 // @include      *
 // @grant        none

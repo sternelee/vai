@@ -175,8 +175,8 @@ export default function SettingsScreen() {
 
   const showAbout = () => {
     Alert.alert(
-      "About VaiBrowser",
-      "VaiBrowser v1.0.0\n\n🚀 Performance Optimized\n🐒 User Scripts Support\n🤖 Multi-AI Provider Support\n📱 Built with React Native & Expo\n\nCombining the lightweight design of Via Browser with modern AI capabilities and advanced performance optimization.",
+      "About Vai Browser",
+      "Vai Browser v1.0.0\n\n🚀 Performance Optimized\n🐒 User Scripts Support\n🤖 Multi-AI Provider Support\n📱 Built with React Native & Expo\n\nCombining the lightweight design of Via Browser with modern AI capabilities and advanced performance optimization.",
       [{ text: "OK" }],
     );
   };
@@ -505,7 +505,7 @@ export default function SettingsScreen() {
         <SettingSection title="ℹ️ About">
           <SettingRow
             icon="information-circle"
-            title="About VaiBrowser"
+            title="About Vai Browser"
             subtitle="Version 1.0.0 - Multi-AI & Performance Optimized"
             onPress={showAbout}
             rightComponent={
@@ -567,7 +567,7 @@ export default function SettingsScreen() {
               { color: isDark ? "#8E8E93" : "#6B6B6B" },
             ]}
           >
-            VaiBrowser - Smart browsing with AI, Performance & Scripts 🚀✨🐒
+            Vai Browser - Smart browsing with AI, Performance & Scripts 🚀✨🐒
           </Text>
         </View>
       </ScrollView>
