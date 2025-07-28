@@ -685,10 +685,13 @@ class AIService {
 
       // Get available tools (both MCP and builtin)
       const mcpTools = await mcpService.getAvailableTools();
-      console.log("MCP tools:", mcpTools);
-      const builtinTools = await builtinToolsService.getAvailableTools();
-      console.log("Builtin tools:", builtinTools);
-      const allTools = { ...mcpTools, ...builtinTools };
+      // console.log("MCP tools:", mcpTools);
+      // const builtinTools = await builtinToolsService.getAvailableTools();
+      // console.log("Builtin tools:", builtinTools);
+      const allTools = {
+        ...mcpTools,
+        // ...builtinTools
+      };
 
       const newMessages = convertToModelMessages(messages);
 
@@ -754,8 +757,11 @@ class AIService {
     });
 
     const mcpTools = await mcpService.getAvailableTools();
-    const builtinTools = await builtinToolsService.getAvailableTools();
-    const allTools = { ...mcpTools, ...builtinTools };
+    // const builtinTools = await builtinToolsService.getAvailableTools();
+    const allTools = {
+      ...mcpTools,
+      // ...builtinTools
+    };
     const hasTools = Object.keys(allTools).length > 0;
 
     return {
